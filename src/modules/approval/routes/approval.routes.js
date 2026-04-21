@@ -1,0 +1,14 @@
+const router = require('express').Router();
+const ctrl = require('../controllers/approval.controller');
+const { authenticate } = require('../../../middlewares/auth');
+const { authorize } = require('../../../middlewares/rbac');
+router.use(authenticate);
+router.post('/chains', authorize('admin', 'manager'), ctrl.createChain);
+router.get('/chains', ctrl.getChains);
+router.post('/request', ctrl.request);
+router.post('/:id/approve', ctrl.approve);
+router.post('/:id/reject', ctrl.reject);
+router.get('/pending', ctrl.pending);
+router.get('/history', ctrl.history);
+router.get('/:id', ctrl.getById);
+module.exports = router;

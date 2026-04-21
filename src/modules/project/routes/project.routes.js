@@ -1,0 +1,15 @@
+const router = require('express').Router();
+const ctrl = require('../controllers/project.controller');
+const { authenticate } = require('../../../middlewares/auth');
+router.use(authenticate);
+router.post('/', ctrl.create);
+router.get('/', ctrl.getAll);
+router.get('/:id', ctrl.getById);
+router.patch('/:id', ctrl.update);
+router.delete('/:id', ctrl.remove);
+router.post('/:id/milestones', ctrl.addMilestone);
+router.get('/:id/milestones', ctrl.getMilestones);
+router.post('/:id/dependencies', ctrl.addDependency);
+router.get('/:id/dependencies', ctrl.getDependencies);
+router.get('/:id/gantt', ctrl.getGantt);
+module.exports = router;

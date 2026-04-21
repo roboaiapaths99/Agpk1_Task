@@ -1,0 +1,102 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #F4F5F7;
+  --foreground: #091E42;
+  --card: #FFFFFF;
+  --card-foreground: #091E42;
+  --popover: #FFFFFF;
+  --popover-foreground: #091E42;
+  --primary: #0052CC;
+  --primary-foreground: #FFFFFF;
+  --secondary: #6554C0;
+  --secondary-foreground: #FFFFFF;
+  --accent: #8B5CF6;
+  --success: #36B37E;
+  --warning: #FFAB00;
+  --danger: #FF5630;
+  --border: #DFE1E6;
+}
+
+.dark {
+  --background: #0F172A;
+  --foreground: #F8FAFC;
+  --card: #1E293B;
+  --card-foreground: #F8FAFC;
+  --popover: #1E293B;
+  --popover-foreground: #F8FAFC;
+  --primary: #3B82F6;
+  --primary-foreground: #FFFFFF;
+  --secondary: #818CF8;
+  --secondary-foreground: #FFFFFF;
+  --success: #10B981;
+  --warning: #F59E0B;
+  --danger: #EF4444;
+  --border: #334155;
+}
+
+@layer base {
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', sans-serif;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply bg-card text-card-foreground border border-border shadow-soft rounded-2xl transition-all duration-300;
+  }
+
+  .glass-card:hover {
+    @apply shadow-premium translate-y-[-2px];
+  }
+
+  .btn-primary {
+    @apply bg-primary text-primary-foreground px-5 py-2.5 rounded-xl font-bold transition-all duration-200 hover:brightness-110 active:scale-95 flex items-center justify-center gap-2 shadow-sm;
+  }
+
+  .btn-secondary {
+    @apply bg-secondary text-secondary-foreground px-5 py-2.5 rounded-xl font-bold transition-all duration-200 hover:brightness-110 active:scale-95 flex items-center justify-center gap-2 shadow-sm;
+  }
+
+  .input-field {
+    @apply w-full px-4 py-3 bg-card border border-border text-foreground rounded-xl focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all text-sm font-medium;
+  }
+
+  .badge-premium {
+    @apply px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-widest border;
+  }
+}
+
+@layer utilities {
+  .animate-bounce-short {
+    animation: bounce-short 1s ease-in-out infinite;
+  }
+
+  @keyframes bounce-short {
+
+    0%,
+    100% {
+      transform: translateY(0);
+    }
+
+    50% {
+      transform: translateY(-3px);
+    }
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-slate-200 rounded-full hover:bg-slate-300 transition-colors;
+  }
+}

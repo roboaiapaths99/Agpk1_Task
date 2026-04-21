@@ -1,0 +1,10 @@
+const router = require('express').Router();
+const ctrl = require('../controllers/autoTask.controller');
+const { authenticate } = require('../../../middlewares/auth');
+const { authorize } = require('../../../middlewares/rbac');
+router.use(authenticate);
+router.post('/rules', authorize('admin', 'manager'), ctrl.create);
+router.get('/rules', ctrl.getAll);
+router.patch('/rules/:id', authorize('admin', 'manager'), ctrl.update);
+router.delete('/rules/:id', authorize('admin'), ctrl.remove);
+module.exports = router;

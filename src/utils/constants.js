@@ -1,0 +1,124 @@
+/**
+ * Constants used across the application
+ */
+
+const TASK_STATUS = {
+    OPEN: 'open',
+    IN_PROGRESS: 'in_progress',
+    IN_REVIEW: 'in_review',
+    BLOCKED: 'blocked',
+    WAITING_INPUT: 'waiting_input',
+    ESCALATED: 'escalated',
+    COMPLETED: 'completed',
+    CANCELLED: 'cancelled',
+};
+
+const TASK_PRIORITY = {
+    LOW: 'low',
+    MEDIUM: 'medium',
+    HIGH: 'high',
+    CRITICAL: 'critical',
+};
+
+const USER_ROLES = {
+    ADMIN: 'admin',
+    MANAGER: 'manager',
+    USER: 'user',
+};
+
+const APPROVAL_STATUS = {
+    PENDING: 'pending',
+    APPROVED: 'approved',
+    REJECTED: 'rejected',
+    CHANGES_REQUESTED: 'changes_requested',
+};
+
+const NOTIFICATION_CHANNELS = {
+    IN_APP: 'IN_APP',
+    EMAIL: 'EMAIL',
+    SMS: 'SMS',
+    PUSH: 'PUSH',
+};
+
+const NOTIFICATION_PRIORITY = {
+    LOW: 'LOW',
+    MEDIUM: 'MEDIUM',
+    HIGH: 'HIGH',
+    CRITICAL: 'CRITICAL',
+};
+
+const EVENTS = {
+    // Task events
+    TASK_CREATED: 'TASK_CREATED',
+    TASK_UPDATED: 'TASK_UPDATED',
+    TASK_DELETED: 'TASK_DELETED',
+    TASK_ASSIGNED: 'TASK_ASSIGNED',
+    TASK_STATUS_CHANGED: 'TASK_STATUS_CHANGED',
+    TASK_OVERDUE: 'TASK_OVERDUE',
+    TASK_DUE_SOON: 'TASK_DUE_SOON',
+
+    // Comment events
+    COMMENT_ADDED: 'COMMENT_ADDED',
+    COMMENT_UPDATED: 'COMMENT_UPDATED',
+
+    // Workflow events
+    TASK_STATE_CHANGED: 'TASK_STATE_CHANGED',
+
+    // Approval events
+    APPROVAL_REQUESTED: 'APPROVAL_REQUESTED',
+    APPROVAL_STEP_COMPLETED: 'APPROVAL_STEP_COMPLETED',
+    APPROVAL_COMPLETED: 'APPROVAL_COMPLETED',
+    APPROVAL_REJECTED: 'APPROVAL_REJECTED',
+
+    // SLA events
+    SLA_BREACHED: 'SLA_BREACHED',
+    SLA_WARNING: 'SLA_WARNING',
+
+    // Project events
+    PROJECT_CREATED: 'PROJECT_CREATED',
+    MILESTONE_COMPLETED: 'MILESTONE_COMPLETED',
+
+    // User events
+    USER_REGISTERED: 'USER_REGISTERED',
+    USER_LOGIN: 'USER_LOGIN',
+
+    // Audit events
+    AUDIT_LOG_CREATED: 'AUDIT_LOG_CREATED',
+    DATA_EXPORTED: 'DATA_EXPORTED',
+
+    // Integration events
+    EXTERNAL_EVENT_RECEIVED: 'EXTERNAL_EVENT_RECEIVED',
+
+    // Finance events
+    INVOICE_CREATED: 'INVOICE_CREATED',
+    INVOICE_UPDATED: 'INVOICE_UPDATED',
+    INVOICE_CANCELLED: 'INVOICE_CANCELLED',
+    PAYMENT_RECEIVED: 'PAYMENT_RECEIVED',
+    PAYMENT_REMINDER_DUE: 'PAYMENT_REMINDER_DUE',
+    EXPENSE_ADDED: 'EXPENSE_ADDED',
+    EXPENSE_APPROVED: 'EXPENSE_APPROVED',
+    LEDGER_ENTRY_CREATED: 'LEDGER_ENTRY_CREATED',
+    FINANCE_ALERT: 'FINANCE_ALERT',
+    CRM_CUSTOMER_CREATED: 'CRM_CUSTOMER_CREATED',
+};
+
+const SOURCE_MODULES = {
+    CRM: 'CRM',
+    HR: 'HR',
+    FINANCE: 'FINANCE',
+    INVENTORY: 'INVENTORY',
+    SAFETY: 'SAFETY',
+    AUTOMATION: 'AUTOMATION',
+    INTERNAL: 'INTERNAL',
+};
+
+module.exports = {
+    TASK_STATUS,
+    TASK_PRIORITY,
+    USER_ROLES,
+    APPROVAL_STATUS,
+    NOTIFICATION_CHANNELS,
+    NOTIFICATION_PRIORITY,
+    EVENTS,
+    SOURCE_MODULES,
+};
