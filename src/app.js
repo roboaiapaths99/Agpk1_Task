@@ -201,6 +201,15 @@ app.use('/api/v1', v1Router);
 // ======================
 const { errorHandler, notFoundHandler } = require('./middlewares/errorHandler');
 app.use(notFoundHandler);
+
+// Serve Static Frontend in Production
+if (process.env.NODE_ENV === 'production') {
+    app.use(express.static(path.join(__dirname, '../public/frontend')));
+    app.get('*', (req, res) => {
+        res.sendFile(path.resolve(__dirname, '../public/frontend', 'index.html'));
+    });
+}
+
 app.use(errorHandler);
 
 module.exports = app;
