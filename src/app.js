@@ -59,6 +59,17 @@ const payrollRoutes = require('./modules/finance/payroll/routes/payroll.routes')
 const financeRecurringRoutes = require('./modules/finance/recurring/routes/recurring.routes');
 
 const app = express();
+logger.info('🚀 App initialization started: Loading middleware and routes...');
+
+// Health Check for Production
+app.get('/api/health', (req, res) => {
+    res.json({ 
+        status: 'ok', 
+        environment: process.env.NODE_ENV,
+        timestamp: new Date().toISOString() 
+    });
+});
+
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 app.use('/temp', express.static(path.join(process.cwd(), 'public/temp')));
 
