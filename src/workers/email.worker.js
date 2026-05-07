@@ -18,7 +18,7 @@ const initializeEmailWorker = () => {
 
         try {
             await transporter.sendMail({
-                from: `"AGPK1 Enterprise" <${config.email.user}>`,
+                from: `"AGPK1 Enterprise" <${config.email.auth.user}>`,
                 to,
                 subject,
                 html,

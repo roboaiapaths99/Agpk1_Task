@@ -15,7 +15,7 @@ class EmailService {
         const { to, subject, html, attachments } = options;
         try {
             await this.transporter.sendMail({
-                from: `"AGPK1 Enterprise" <${config.email.user}>`,
+                from: `"AGPK1 Enterprise" <${config.email.auth.user}>`,
                 to,
                 subject,
                 html,

@@ -49,6 +49,10 @@ const startServer = async () => {
         const jobScheduler = require('./core/jobScheduler');
         jobScheduler.init();
 
+        // 8. Start Email Worker (BullMQ)
+        const initializeEmailWorker = require('./workers/email.worker');
+        initializeEmailWorker();
+
         // Graceful shutdown
         const shutdown = async (signal) => {
             logger.info(`${signal} received. Shutting down gracefully...`);

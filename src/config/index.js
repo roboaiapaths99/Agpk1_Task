@@ -17,8 +17,10 @@ const config = {
     service: process.env.EMAIL_SERVICE || 'mock',
     host: process.env.EMAIL_HOST || '',
     port: parseInt(process.env.EMAIL_PORT, 10) || 2525,
-    user: process.env.EMAIL_USER || '',
-    pass: process.env.EMAIL_PASS || '',
+    auth: {
+      user: process.env.EMAIL_USER || '',
+      pass: process.env.EMAIL_PASS || '',
+    }
   },
   logLevel: process.env.LOG_LEVEL || 'info',
   rateLimit: {
@@ -33,6 +35,7 @@ const config = {
     growthFactor: parseFloat(process.env.FINANCE_GROWTH_FACTOR) || 1.05,
   },
   frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5173',
+  skipEmailVerification: process.env.SKIP_EMAIL_VERIFICATION === 'true',
   isDevelopment: process.env.NODE_ENV === 'development',
   isProduction: process.env.NODE_ENV === 'production',
   isTest: process.env.NODE_ENV === 'test',

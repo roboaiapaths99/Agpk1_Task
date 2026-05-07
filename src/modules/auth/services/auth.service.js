@@ -84,7 +84,7 @@ class AuthService {
         if (!user || !user.isActive) throw new UnauthorizedError('Invalid credentials');
 
         // Check if user is verified
-        if (!user.isVerified) {
+        if (!user.isVerified && !config.skipEmailVerification) {
             throw new UnauthorizedError('Please verify your email address before logging in');
         }
 
