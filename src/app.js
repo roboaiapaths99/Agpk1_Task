@@ -131,15 +131,8 @@ app.use(morgan('combined', { stream: morganStream }));
 // ======================
 // Health & Status Check
 // ======================
-app.get('/', (req, res) => {
-    res.json({
-        success: true,
-        message: 'agpk1-task API is ready',
-        status: 'online',
-        version: '1.0.0',
-        documentation: '/api/v1/health-check'
-    });
-});
+// Root redirect for health is now handled by /api/health
+// Production frontend will load on the root path via the catch-all route below.
 
 // ======================
 // API Routes (v1)
