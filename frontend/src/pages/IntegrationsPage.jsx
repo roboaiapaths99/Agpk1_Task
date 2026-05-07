@@ -69,7 +69,7 @@ const IntegrationCard = ({ id, name, icon: Icon, description, connected, onConne
 );
 
 const WebhookSection = () => {
-    const webhookUrl = `http://localhost:5000/api/integrations/github/webhook`;
+    const webhookUrl = `${window.location.origin}/api/integrations/github/webhook`;
     const [copied, setCopied] = useState(false);
 
     const handleCopy = () => {

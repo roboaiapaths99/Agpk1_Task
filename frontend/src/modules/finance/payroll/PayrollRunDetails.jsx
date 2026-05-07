@@ -59,7 +59,7 @@ const PayrollRunDetails = () => {
                 // Determine base URL for static files
                 const staticBase = window.location.origin.includes('localhost') 
                     ? 'http://localhost:5000' 
-                    : '';
+                    : window.location.origin;
                 
                 // Open PDF in new tab
                 window.open(`${staticBase}${url}`, '_blank');

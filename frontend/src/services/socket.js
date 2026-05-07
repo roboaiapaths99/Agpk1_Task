@@ -5,7 +5,7 @@ let socket;
 export const initSocket = (token) => {
     if (socket) return socket;
 
-    socket = io(process.env.REACT_APP_API_URL || 'http://localhost:5000', {
+    socket = io(process.env.REACT_APP_API_URL || window.location.origin, {
         auth: { token },
         transports: ['websocket'],
     });
