@@ -59,6 +59,7 @@ const payrollRoutes = require('./modules/finance/payroll/routes/payroll.routes')
 const financeRecurringRoutes = require('./modules/finance/recurring/routes/recurring.routes');
 
 const app = express();
+app.set('trust proxy', 1);
 logger.info('🚀 App initialization started: Loading middleware and routes...');
 
 // Health Check for Production

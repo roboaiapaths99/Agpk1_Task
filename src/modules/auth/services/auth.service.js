@@ -21,10 +21,10 @@ class AuthService {
         if (!domain) throw new ValidationError('Invalid email domain');
 
         // Block free email providers (optional but recommended for corporate SaaS)
-        const freeProviders = ['gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com', 'icloud.com'];
-        if (freeProviders.includes(domain)) {
-            throw new ValidationError('Please use a corporate email address to register');
-        }
+        // const freeProviders = ['gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com', 'icloud.com'];
+        // if (freeProviders.includes(domain)) {
+        //     throw new ValidationError('Please use a corporate email address to register');
+        // }
 
         const existingUser = await User.findOne({ email });
         if (existingUser) throw new ConflictError('Email already registered');
