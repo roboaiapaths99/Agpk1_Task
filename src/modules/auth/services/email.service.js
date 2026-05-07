@@ -29,7 +29,7 @@ class EmailService {
     }
 
     async sendVerificationEmail(to, token) {
-        const verifyURL = `http://localhost:5173/verify-email/${token}`;
+        const verifyURL = `${config.frontendUrl}/verify-email/${token}`;
         const html = `
             <h1>Verify your account</h1>
             <p>Please click the link below to verify your email address:</p>
@@ -51,7 +51,7 @@ class EmailService {
     }
 
     async sendPasswordResetEmail(to, token) {
-        const resetURL = `http://localhost:5173/reset-password/${token}`;
+        const resetURL = `${config.frontendUrl}/reset-password/${token}`;
         const html = `
             <h1>Reset your password</h1>
             <p>You requested a password reset. Click the link below to proceed:</p>

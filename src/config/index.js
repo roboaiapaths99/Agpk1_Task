@@ -32,6 +32,7 @@ const config = {
   finance: {
     growthFactor: parseFloat(process.env.FINANCE_GROWTH_FACTOR) || 1.05,
   },
+  frontendUrl: process.env.FRONTEND_URL || 'http://localhost:5173',
   isDevelopment: process.env.NODE_ENV === 'development',
   isProduction: process.env.NODE_ENV === 'production',
   isTest: process.env.NODE_ENV === 'test',
