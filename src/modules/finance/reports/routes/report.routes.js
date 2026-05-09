@@ -15,7 +15,7 @@ router.get('/ar-aging', authorize('admin', 'accountant'), reportController.getAR
 router.get('/ap-aging', authorize('admin', 'accountant'), reportController.getAPAging);
 router.get('/dunning-list', authorize('admin', 'accountant'), reportController.getDunningList);
 router.get('/forecasting', authorize('admin', 'accountant', 'manager'), reportController.getForecasting);
-router.get('/dashboard', authorize('admin', 'accountant', 'manager'), reportController.getDashboard);
+router.get('/dashboard', authorize('admin', 'accountant', 'manager', 'user'), reportController.getDashboard);
 
 router.post('/export', authorize('admin', 'accountant'), reportController.exportReport);
 router.post('/export/excel', authorize('admin', 'accountant'), reportController.exportExcel);

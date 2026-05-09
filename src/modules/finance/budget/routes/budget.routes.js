@@ -10,12 +10,12 @@ router.use(authenticate);
 
 router
     .route('/')
-    .get(authorize('admin', 'accountant', 'manager'), budgetController.getBudgets)
+    .get(authorize('admin', 'accountant', 'manager', 'user'), budgetController.getBudgets)
     .post(authorize('admin', 'accountant'), budgetController.createBudget);
 
 router
     .route('/:id')
-    .get(authorize('admin', 'accountant', 'manager'), budgetController.getBudget)
+    .get(authorize('admin', 'accountant', 'manager', 'user'), budgetController.getBudget)
     .patch(authorize('admin', 'accountant'), budgetController.updateBudget)
     .delete(authorize('admin', 'accountant'), budgetController.deleteBudget);
 

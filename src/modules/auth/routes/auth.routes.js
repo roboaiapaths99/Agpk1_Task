@@ -37,7 +37,7 @@ router.patch('/roles/:id', authenticate, authorize('admin'), roleController.upda
 router.delete('/roles/:id', authenticate, authorize('admin'), roleController.delete);
 
 // Admin routes
-router.get('/users', authenticate, authorize('admin', 'manager'), authController.getAllUsers);
+router.get('/users', authenticate, authorize('admin', 'manager', 'user'), authController.getAllUsers);
 
 // Hierarchy routes
 const hierarchyController = require('../controllers/hierarchy.controller');

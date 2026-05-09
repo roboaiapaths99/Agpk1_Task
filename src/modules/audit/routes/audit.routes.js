@@ -5,7 +5,7 @@ const { authenticate } = require('../../../middlewares/auth');
 const { authorize } = require('../../../middlewares/rbac');
 
 router.use(authenticate);
-router.use(authorize('admin', 'manager'));
+router.use(authorize('admin', 'manager', 'user'));
 
 router.get('/logs', auditController.getLogs);
 router.get('/filters', auditController.getFilters);

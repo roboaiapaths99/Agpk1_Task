@@ -139,6 +139,9 @@ app.use(morgan('combined', { stream: morganStream }));
 // API Routes (v1)
 // ======================
 const v1Router = express.Router();
+const { tenantContext } = require('./middlewares/tenantContext');
+
+v1Router.use(tenantContext);
 
 v1Router.get('/health-check', (req, res) => {
     res.json({ success: true, message: 'agpk1-task API v1 is running', timestamp: new Date().toISOString() });
@@ -196,9 +199,6 @@ v1Router.use('/finance/forecasting', require('./modules/finance/forecasting/rout
 v1Router.use('/finance/tax', require('./modules/finance/tax/routes/tax.routes'));
 
 
-const { tenantContext } = require('./middlewares/tenantContext');
-
-v1Router.use(tenantContext);
 app.use('/api/v1', v1Router);
 
 // ======================

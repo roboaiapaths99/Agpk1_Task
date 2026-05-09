@@ -6,6 +6,6 @@ const { authorize } = require('../../../middlewares/rbac');
 
 router.use(authenticate);
 
-router.get('/team-score', authorize('admin', 'manager'), healthController.getTeamScore);
+router.get('/team-score', authorize('admin', 'manager', 'user'), healthController.getTeamScore);
 
 module.exports = router;

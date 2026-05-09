@@ -7,8 +7,8 @@ import toast from 'react-hot-toast';
 const Login = () => {
     const navigate = useNavigate();
     const { login, loading } = useAuthStore();
-    const [email, setEmail] = React.useState('admin@agpk1.com');
-    const [password, setPassword] = React.useState('password123');
+    const [email, setEmail] = React.useState('');
+    const [password, setPassword] = React.useState('');
 
     const handleSubmit = async (e) => {
         e.preventDefault();
