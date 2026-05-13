@@ -116,7 +116,6 @@ const taskSchema = new mongoose.Schema(
         },
         key: {
             type: String,
-            unique: true,
             sparse: true,
             index: true,
         },
@@ -197,6 +196,7 @@ taskSchema.index({ organizationId: 1, project: 1, status: 1 });
 taskSchema.index({ organizationId: 1, createdBy: 1, createdAt: -1 });
 taskSchema.index({ organizationId: 1, tags: 1 });
 taskSchema.index({ organizationId: 1, sourceModule: 1, sourceId: 1 });
+taskSchema.index({ organizationId: 1, key: 1 }, { unique: true, sparse: true });
 
 // Text index for search
 taskSchema.index({ title: 'text', description: 'text' });

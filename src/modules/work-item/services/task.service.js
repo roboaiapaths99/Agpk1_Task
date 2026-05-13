@@ -24,8 +24,8 @@ class TaskService {
                     data.workflowId = project.defaultWorkflowId;
                 }
                 const prefix = project.keyPrefix || 'TASK';
-                // Find the latest task for this project to get the next sequence number
-                const lastTask = await Task.findOne({ project: data.project, organizationId, key: new RegExp(`^${prefix}-`) })
+                // Find the latest task for this organization with the same prefix to get the next sequence number
+                const lastTask = await Task.findOne({ organizationId, key: new RegExp(`^${prefix}-`) })
                     .sort({ createdAt: -1 })
                     .select('key');
                 
