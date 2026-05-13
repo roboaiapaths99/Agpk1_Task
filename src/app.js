@@ -148,9 +148,9 @@ v1Router.get('/health-check', (req, res) => {
 });
 
 v1Router.use('/auth', authRoutes);
-v1Router.use('/tasks', taskRoutes);
-v1Router.use('/tasks', commentRoutes);
 v1Router.use('/tasks', checklistRoutes);
+v1Router.use('/tasks', commentRoutes);
+v1Router.use('/tasks', taskRoutes);
 v1Router.use('/views', viewRoutes);
 v1Router.use('/workflows', workflowRoutes);
 v1Router.use('/automation', automationRoutes);

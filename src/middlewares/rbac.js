@@ -28,7 +28,8 @@ const requirePermission = (permission) => {
         }
 
         // Admins have all permissions (Superuser bypass)
-        if (req.user.role === 'admin') {
+        const userRole = String(req.user.role || '').toLowerCase();
+        if (userRole === 'admin') {
             return next();
         }
 
@@ -36,6 +37,7 @@ const requirePermission = (permission) => {
         const hasPermission = req.user.permissions && req.user.permissions.includes(permission);
 
         if (!hasPermission) {
+            console.warn(`[RBAC] Permission denied: user=${req.user.id}, role=${req.user.role}, required=${permission}`);
             return next(new ForbiddenError(`Permission '${permission}' is required for this resource`));
         }
 

@@ -32,6 +32,7 @@ const updateTaskSchema = Joi.object({
     dueDate: Joi.date().iso().allow(null),
     slaDeadline: Joi.date().iso().allow(null),
     estimatedHours: Joi.number().min(0).allow(null),
+    isArchived: Joi.boolean(),
 }).min(1);
 
 const assignTaskSchema = Joi.object({
@@ -58,6 +59,12 @@ const addChecklistSchema = Joi.object({
     })),
 });
 
+const updateChecklistItemSchema = Joi.object({
+    title: Joi.string().max(500),
+    completed: Joi.boolean(),
+    assignee: Joi.string().hex().length(24).allow(null),
+}).min(1);
+
 const bulkCreateSchema = Joi.object({
     tasks: Joi.array().items(createTaskSchema).min(1).max(100).required(),
 });
@@ -69,5 +76,6 @@ module.exports = {
     changeStatusSchema,
     addCommentSchema,
     addChecklistSchema,
+    updateChecklistItemSchema,
     bulkCreateSchema,
 };
