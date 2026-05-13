@@ -25,7 +25,7 @@ const config = {
   logLevel: process.env.LOG_LEVEL || 'info',
   rateLimit: {
     windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS, 10) || 900000,
-    max: parseInt(process.env.RATE_LIMIT_MAX, 10) || 100,
+    max: parseInt(process.env.RATE_LIMIT_MAX, 10) || 1000,
   },
   cache: {
     ttl: parseInt(process.env.CACHE_TTL, 10) || 3600,

@@ -24,8 +24,20 @@ class TaskService {
                     data.workflowId = project.defaultWorkflowId;
                 }
                 const prefix = project.keyPrefix || 'TASK';
-                const count = await Task.countDocuments({ project: data.project, organizationId });
-                data.key = `${prefix}-${count + 1}`;
+                // Find the latest task for this project to get the next sequence number
+                const lastTask = await Task.findOne({ project: data.project, organizationId, key: new RegExp(`^${prefix}-`) })
+                    .sort({ createdAt: -1 })
+                    .select('key');
+                
+                let nextNumber = 1;
+                if (lastTask && lastTask.key) {
+                    const lastKeyParts = lastTask.key.split('-');
+                    const lastNumber = parseInt(lastKeyParts[lastKeyParts.length - 1], 10);
+                    if (!isNaN(lastNumber)) {
+                        nextNumber = lastNumber + 1;
+                    }
+                }
+                data.key = `${prefix}-${nextNumber}`;
             }
         }
 
