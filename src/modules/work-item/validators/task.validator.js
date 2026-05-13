@@ -59,9 +59,15 @@ const addChecklistSchema = Joi.object({
     })),
 });
 
+const addItemToChecklistSchema = Joi.object({
+    title: Joi.string().required().max(500),
+    completed: Joi.boolean(),
+    assignee: Joi.string().hex().length(24).allow(null),
+});
+
 const updateChecklistItemSchema = Joi.object({
     title: Joi.string().max(500),
-    completed: Joi.boolean(),
+    completed: Joi.boolean().truthy('true', 1).falsy('false', 0),
     assignee: Joi.string().hex().length(24).allow(null),
 }).min(1);
 
@@ -76,6 +82,7 @@ module.exports = {
     changeStatusSchema,
     addCommentSchema,
     addChecklistSchema,
+    addItemToChecklistSchema,
     updateChecklistItemSchema,
     bulkCreateSchema,
 };

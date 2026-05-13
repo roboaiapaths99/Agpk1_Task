@@ -4,6 +4,78 @@ import toast from 'react-hot-toast';
 export const BASE_URL = process.env.REACT_APP_API_URL || window.location.origin;
 export const API_URL = `${BASE_URL}/api/v1`;
 
+/**
+ * Maps HTTP status codes to user-friendly error messages.
+ * These are used as fallbacks when the backend doesn't provide a clean message.
+ */
+const FRIENDLY_MESSAGES = {
+    400: 'Invalid request. Please check your input and try again.',
+    401: 'Your session has expired. Please log in again.',
+    403: 'You don\'t have permission to do this.',
+    404: 'The item you\'re looking for was not found.',
+    409: 'This item already exists or conflicts with existing data.',
+    422: 'Unable to process the request. Please verify your input.',
+    429: 'Too many requests. Please wait a moment and try again.',
+    500: 'Something went wrong. Please try again later.',
+    502: 'Server is temporarily unavailable. Please try again shortly.',
+    503: 'Service is under maintenance. Please try again later.',
+};
+
+/**
+ * Returns a clean, user-friendly error message.
+ * Filters out any technical/backend error messages.
+ */
+const getFriendlyMessage = (error) => {
+    const status = error.response?.status;
+    const backendMessage = error.response?.data?.message;
+
+    // If the backend sent a clean user-friendly message, use it
+    if (backendMessage && !looksLikeTechnicalError(backendMessage)) {
+        return backendMessage;
+    }
+
+    // Otherwise, use our status-code-based fallback
+    if (status && FRIENDLY_MESSAGES[status]) {
+        return FRIENDLY_MESSAGES[status];
+    }
+
+    // Generic fallback
+    return 'Something went wrong. Please try again.';
+};
+
+/**
+ * Checks if an error message looks like a technical/backend error
+ * that shouldn't be shown directly to users.
+ */
+const looksLikeTechnicalError = (message) => {
+    if (!message || typeof message !== 'string') return true;
+    const technicalPatterns = [
+        /stack/i,
+        /at\s+\w+\s*\(/,           // stack trace lines like "at Function (..."
+        /ECONNREFUSED/i,
+        /ENOTFOUND/i,
+        /ETIMEDOUT/i,
+        /MongoError/i,
+        /MongoServerError/i,
+        /mongoose/i,
+        /Cast to ObjectId/i,
+        /CastError/i,
+        /E11000/i,
+        /TypeError/i,
+        /ReferenceError/i,
+        /SyntaxError/i,
+        /Cannot read prop/i,
+        /undefined is not/i,
+        /null is not/i,
+        /ENOMEM/i,
+        /ENOENT/i,
+        /Internal Server Error/i,
+        /statusCode/i,
+        /\bnode_modules\b/i,
+    ];
+    return technicalPatterns.some((pattern) => pattern.test(message));
+};
+
 const api = axios.create({
     baseURL: API_URL,
     headers: {
@@ -86,15 +158,17 @@ api.interceptors.response.use(
             }
         }
 
+        // Show user-friendly toast for all non-cancelled errors
         if (error.code !== 'ERR_CANCELED') {
-            const msg = error.response?.data?.message || error.message || 'An unexpected error occurred';
-            toast.error(msg);
+            const friendlyMsg = getFriendlyMessage(error);
+            toast.error(friendlyMsg);
         }
 
-        const msg = error.response?.data?.message || error.message || 'Request failed';
-        const err = new Error(msg);
+        // Create a clean error object for components to use
+        const friendlyMsg = getFriendlyMessage(error);
+        const err = new Error(friendlyMsg);
         err.response = error.response;
-        err.data = error.response?.data;
+        err.status = error.response?.status;
         return Promise.reject(err);
     }
 );

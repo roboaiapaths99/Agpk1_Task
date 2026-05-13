@@ -405,17 +405,18 @@ class TaskService {
 
 
     async updateChecklistItem(checklistId, organizationId, itemId, data) {
-        const checklist = await Checklist.findOne({ _id: checklistId, organizationId });
-        if (!checklist) throw new NotFoundError('Checklist');
+        const update = {};
+        if (data.title !== undefined) update['items.$.title'] = data.title;
+        if (data.completed !== undefined) update['items.$.completed'] = data.completed;
+        if (data.assignee !== undefined) update['items.$.assignee'] = data.assignee;
 
-        const item = checklist.items.id(itemId);
-        if (!item) throw new NotFoundError('Checklist item');
+        const checklist = await Checklist.findOneAndUpdate(
+            { _id: checklistId, organizationId, 'items._id': itemId },
+            { $set: update },
+            { new: true, runValidators: true }
+        );
 
-        if (data.title !== undefined) item.title = data.title;
-        if (data.completed !== undefined) item.completed = data.completed;
-        if (data.assignee !== undefined) item.assignee = data.assignee;
-
-        await checklist.save();
+        if (!checklist) throw new NotFoundError('Checklist or item');
         return checklist;
     }
 

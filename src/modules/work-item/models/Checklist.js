@@ -38,4 +38,7 @@ const checklistSchema = new mongoose.Schema(
     }
 );
 
+const tenantPlugin = require('../../../core/tenantPlugin');
+checklistSchema.plugin(tenantPlugin);
+
 module.exports = mongoose.model('Checklist', checklistSchema);
