@@ -111,6 +111,17 @@ app.use(express.urlencoded({ extended: true }));
 // HTTP Parameter Pollution protection
 app.use(hpp());
 
+// Express 5 query descriptor compatibility patch for express-mongo-sanitize
+app.use((req, res, next) => {
+    Object.defineProperty(req, 'query', {
+        value: req.query,
+        writable: true,
+        configurable: true,
+        enumerable: true
+    });
+    next();
+});
+
 // Data Sanitization against NoSQL Injection
 app.use(mongoSanitize());
 
