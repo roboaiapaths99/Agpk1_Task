@@ -308,14 +308,10 @@ class AuthService {
         });
     }
 
-    async revokeToken(token, userId) {
-        return RefreshToken.deleteOne({ token, user: userId });
-    }
-
     async forgotPassword(email) {
         const user = await User.findOne({ email });
         if (!user) {
-            throw new Error('No user found with that email address');
+            throw new NotFoundError('User with that email address');
         }
 
         const resetToken = user.createPasswordResetToken();
@@ -339,7 +335,7 @@ class AuthService {
         });
 
         if (!user) {
-            throw new Error('Token is invalid or has expired');
+            throw new UnauthorizedError('Token is invalid or has expired');
         }
 
         user.password = password;
@@ -362,7 +358,7 @@ class AuthService {
         });
 
         if (!user) {
-            throw new Error('Token is invalid or has expired');
+            throw new UnauthorizedError('Token is invalid or has expired');
         }
 
         user.isVerified = true;
@@ -376,7 +372,7 @@ class AuthService {
     async resendVerification(email) {
         const user = await User.findOne({ email });
         if (!user) throw new NotFoundError('User');
-        if (user.isVerified) throw new Error('Account is already verified');
+        if (user.isVerified) throw new ValidationError('Account is already verified');
 
         const verificationToken = user.createEmailVerificationToken();
         await user.save({ validateBeforeSave: false });

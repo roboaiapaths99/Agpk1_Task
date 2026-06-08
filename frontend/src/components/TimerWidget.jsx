@@ -17,6 +17,30 @@ const TimerWidget = () => {
     const [seconds, setSeconds] = React.useState(0);
     const [activeTask, setActiveTask] = React.useState(null);
     const [startTime, setStartTime] = React.useState(null);
+    const [weeklyHours, setWeeklyHours] = React.useState(0);
+
+    const fetchWeeklyReport = async () => {
+        try {
+            const res = await timeService.myLogs();
+            const logs = res?.data?.logs || res?.logs || [];
+            
+            // Calculate start of current week (Monday)
+            const today = new Date();
+            const day = today.getDay();
+            const diffToMonday = today.getDate() - day + (day === 0 ? -6 : 1);
+            const startOfWeek = new Date(today.setDate(diffToMonday));
+            startOfWeek.setHours(0, 0, 0, 0);
+
+            // Sum duration in minutes
+            const sumMinutes = logs
+                .filter(log => new Date(log.startTime) >= startOfWeek && log.duration)
+                .reduce((acc, log) => acc + log.duration, 0);
+
+            setWeeklyHours(Math.round((sumMinutes / 60) * 10) / 10);
+        } catch (err) {
+            console.error('Failed to calculate weekly hours', err);
+        }
+    };
 
     // Sync with backend on mount
     React.useEffect(() => {
@@ -39,6 +63,7 @@ const TimerWidget = () => {
             }
         };
         fetchActive();
+        fetchWeeklyReport();
     }, []);
 
     // Listen for custom event to start tracking a task
@@ -96,6 +121,7 @@ const TimerWidget = () => {
             setIsRunning(false);
             setSeconds(0);
             setStartTime(null);
+            fetchWeeklyReport();
             // We keep the activeTask so the user can "Resume" it easily
         } catch (err) {
             console.error('Failed to stop timer', err);
@@ -109,6 +135,8 @@ const TimerWidget = () => {
             handleStart();
         }
     };
+
+    const progressPercent = Math.min(Math.round((weeklyHours / 40) * 100), 100);
 
     return (
         <div className={cn(
@@ -177,10 +205,10 @@ const TimerWidget = () => {
                         <div className="bg-white/5 p-4 rounded-2xl border border-white/5">
                             <div className="flex justify-between items-center text-[10px] font-bold mb-2">
                                 <span className="text-slate-400 uppercase tracking-widest">Weekly Goal</span>
-                                <span className="text-white">12 / 40h</span>
+                                <span className="text-white">{weeklyHours} / 40h</span>
                             </div>
                             <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
-                                <div className="h-full bg-primary w-[30%]" />
+                                <div className="h-full bg-primary transition-all duration-500" style={{ width: `${progressPercent}%` }} />
                             </div>
                         </div>
                     </div>

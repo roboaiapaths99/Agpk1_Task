@@ -2,12 +2,11 @@ const mongoose = require('mongoose');
 const AgingService = require('../../src/modules/finance/reports/services/aging.service');
 const Invoice = require('../../src/modules/finance/invoice/models/Invoice');
 const Expense = require('../../src/modules/finance/expenses/models/Expense');
-const { expect } = require('chai');
 
 describe('Aging Service Tests', () => {
     let orgId = new mongoose.Types.ObjectId();
 
-    before(async () => {
+    beforeAll(async () => {
         // Connect to a test database if necessary or mock the models
         // For this environment, we'll assume the service can be unit tested if it's pure enough
         // or we use the connected mongo if available.

@@ -64,6 +64,13 @@ class ViewController {
             return success(res, null, 'View deleted');
         } catch (error) { next(error); }
     }
+
+    async updateSavedView(req, res, next) {
+        try {
+            const view = await viewService.updateSavedView(req.params.id, req.user.organizationId, req.user.id, req.body);
+            return success(res, { view }, 'View updated');
+        } catch (error) { next(error); }
+    }
 }
 
 module.exports = new ViewController();

@@ -23,7 +23,7 @@ class DocController {
                 parentDocId: req.query.parentDocId,
                 search: req.query.search,
                 isTemplate: req.query.isTemplate,
-            });
+            }, req.user.id, req.user.role);
             return success(res, { documents: docs });
         } catch (e) {
             next(e);
@@ -32,7 +32,7 @@ class DocController {
 
     async getById(req, res, next) {
         try {
-            const doc = await svc.getById(req.params.id, req.user.organizationId);
+            const doc = await svc.getById(req.params.id, req.user.organizationId, req.user.id, req.user.role);
             return success(res, { document: doc });
         } catch (e) {
             next(e);
@@ -86,7 +86,7 @@ class DocController {
 
     async getDocTree(req, res, next) {
         try {
-            const tree = await svc.getDocTree(req.user.organizationId, req.query.projectId);
+            const tree = await svc.getDocTree(req.user.organizationId, req.query.projectId, req.user.id, req.user.role);
             return success(res, { tree });
         } catch (e) {
             next(e);
@@ -97,6 +97,15 @@ class DocController {
         try {
             const doc = await svc.convertToTemplate(req.params.id, req.user.organizationId);
             return success(res, { document: doc });
+        } catch (e) {
+            next(e);
+        }
+    }
+
+    async getVersions(req, res, next) {
+        try {
+            const versions = await svc.getVersions(req.params.id, req.user.organizationId);
+            return success(res, { versions });
         } catch (e) {
             next(e);
         }

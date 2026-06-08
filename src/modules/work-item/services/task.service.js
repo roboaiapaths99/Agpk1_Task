@@ -2,7 +2,7 @@ const Task = require('../models/Task');
 const Comment = require('../models/Comment');
 const Checklist = require('../models/Checklist');
 const Attachment = require('../models/Attachment');
-const { NotFoundError } = require('../../../core/errors');
+const { NotFoundError, UnauthorizedError } = require('../../../core/errors');
 const eventBus = require('../../../core/eventBus');
 const { EVENTS } = require('../../../utils/constants');
 const { paginate, paginationMeta } = require('../../../utils/pagination');
@@ -53,6 +53,12 @@ class TaskService {
         }
 
         const task = await Task.create({ ...data, createdBy: userId, organizationId });
+        
+        // Auto-add assignee to project members if assigned
+        if (task.project && task.assignee) {
+            await this._autoAddProjectMember(task.project, task.assignee, organizationId);
+        }
+
         const populated = await Task.findOne({ _id: task._id, organizationId })
             .populate('assignee', 'name email')
             .populate('createdBy', 'name email')
@@ -75,9 +81,14 @@ class TaskService {
         return populated;
     }
 
-    async getTasks(organizationId, queryParams = {}) {
+    async getTasks(organizationId, queryParams = {}, userId, userRole) {
         const { skip, limit, page, sort } = paginate(queryParams);
         const filter = { ...this._buildFilter(queryParams), organizationId };
+
+        const projectIds = await this._getAccessibleProjectIds(organizationId, userId, userRole);
+        if (projectIds) {
+            filter.project = { $in: projectIds };
+        }
 
         const [tasks, total] = await Promise.all([
             Task.find(filter)
@@ -95,29 +106,46 @@ class TaskService {
         return { tasks, pagination: paginationMeta(total, page, limit) };
     }
 
-    async getTaskById(taskId, organizationId) {
+    async getTaskById(taskId, organizationId, userId, userRole) {
         const task = await Task.findOne({ _id: taskId, organizationId })
             .populate('assignee', 'name email')
             .populate('createdBy', 'name email')
             .populate('watchers', 'name email')
-            .populate('project', 'name')
+            .populate('project', 'name members owner')
             .populate({
                 path: 'children',
                 populate: { path: 'assignee', select: 'name email' }
             })
             .populate('dependencies.task', 'title key status');
         if (!task) throw new NotFoundError('Task');
+
+        if (task.project && userRole !== 'admin') {
+            const project = task.project;
+            const isMember = project.owner.toString() === userId.toString() || 
+                             project.members.some(m => m.toString() === userId.toString());
+            if (!isMember) {
+                throw new UnauthorizedError('Access denied: You are not a member of this project');
+            }
+        }
         return task;
     }
 
-    async getSubTasks(parentId, organizationId) {
+    async getSubTasks(parentId, organizationId, userId, userRole) {
+        await this.getTaskById(parentId, organizationId, userId, userRole);
         return Task.find({ parent: parentId, organizationId })
             .populate('assignee', 'name email')
             .populate('createdBy', 'name email')
             .sort('createdAt');
     }
 
-    async updateTask(taskId, organizationId, data, userId) {
+    async updateTask(taskId, organizationId, data, userId, userRole) {
+        const existingTask = await this.getTaskById(taskId, organizationId, userId, userRole);
+
+        if (data.assignee && existingTask.project) {
+            const projectId = existingTask.project._id || existingTask.project;
+            await this._autoAddProjectMember(projectId, data.assignee, organizationId);
+        }
+
         // Enforce workflow rules if status is being updated
         if (data.status) {
             const newStatus = data.status;
@@ -129,7 +157,7 @@ class TaskService {
 
             // Then apply the rest of the updates
             if (Object.keys(updateData).length === 0) {
-                return this.getTaskById(taskId, organizationId);
+                return this.getTaskById(taskId, organizationId, userId, userRole);
             }
             data = updateData;
         }
@@ -143,17 +171,15 @@ class TaskService {
 
         await eventBus.publish(EVENTS.TASK_UPDATED, {
             taskId: task._id,
-            changes: data,
+            title: task.title,
+            assignee: task.assignee,
+            status: task.status,
+            priority: task.priority,
             updatedBy: userId,
             organizationId,
         });
 
-        // Re-apply SLA if priority changed
-        if (data.priority) {
-            await slaService.applySLA(task);
-        }
-
-        return task;
+        return this.getTaskById(taskId, organizationId, userId, userRole);
     }
 
 
@@ -179,6 +205,10 @@ class TaskService {
             { new: true, runValidators: true }
         ).populate('assignee', 'name email');
         if (!task) throw new NotFoundError('Task');
+
+        if (task.project && assigneeId) {
+            await this._autoAddProjectMember(task.project, assigneeId, organizationId);
+        }
 
         await eventBus.publish(EVENTS.TASK_ASSIGNED, {
             taskId: task._id,
@@ -409,6 +439,7 @@ class TaskService {
         if (data.title !== undefined) update['items.$.title'] = data.title;
         if (data.completed !== undefined) update['items.$.completed'] = data.completed;
         if (data.assignee !== undefined) update['items.$.assignee'] = data.assignee;
+        if (data.children !== undefined) update['items.$.children'] = data.children;
 
         const checklist = await Checklist.findOneAndUpdate(
             { _id: checklistId, organizationId, 'items._id': itemId },
@@ -422,6 +453,16 @@ class TaskService {
 
     async deleteChecklist(checklistId, organizationId) {
         const checklist = await Checklist.findOneAndDelete({ _id: checklistId, organizationId });
+        if (!checklist) throw new NotFoundError('Checklist');
+        return checklist;
+    }
+
+    async deleteChecklistItem(checklistId, organizationId, itemId) {
+        const checklist = await Checklist.findOneAndUpdate(
+            { _id: checklistId, organizationId },
+            { $pull: { items: { _id: itemId } } },
+            { new: true }
+        );
         if (!checklist) throw new NotFoundError('Checklist');
         return checklist;
     }
@@ -475,6 +516,31 @@ class TaskService {
         if (params.dueBefore) filter.dueDate = { ...filter.dueDate, $lte: new Date(params.dueBefore) };
         if (params.dueAfter) filter.dueDate = { ...filter.dueDate, $gte: new Date(params.dueAfter) };
         return filter;
+    }
+
+    async _autoAddProjectMember(projectId, assigneeId, organizationId) {
+        if (!projectId || !assigneeId) return;
+        const { Project } = require('../../project/models/Project');
+        const project = await Project.findOne({ _id: projectId, organizationId });
+        if (project && !project.members.some(m => m.toString() === assigneeId.toString())) {
+            project.members.push(assigneeId);
+            await project.save();
+        }
+    }
+
+    async _getAccessibleProjectIds(organizationId, userId, userRole) {
+        if (userRole === 'admin') return null; // Admin can access all
+        
+        const { Project } = require('../../project/models/Project');
+        const projects = await Project.find({
+            organizationId,
+            $or: [
+                { owner: userId },
+                { members: userId }
+            ]
+        }).select('_id');
+        
+        return projects.map(p => p._id);
     }
 }
 

@@ -14,25 +14,35 @@ const attachmentSchema = new mongoose.Schema(
             required: false,
             index: true,
         },
+        type: {
+            type: String,
+            enum: ['file', 'link'],
+            default: 'file',
+            required: true,
+        },
+        url: {
+            type: String,
+            required: function() { return this.type === 'link'; },
+        },
         filename: {
             type: String,
-            required: true,
+            required: function() { return this.type === 'file'; },
         },
         originalName: {
             type: String,
-            required: true,
+            required: function() { return this.type === 'file'; },
         },
         mimetype: {
             type: String,
-            required: true,
+            required: function() { return this.type === 'file'; },
         },
         size: {
             type: Number,
-            required: true,
+            required: function() { return this.type === 'file'; },
         },
         path: {
             type: String,
-            required: true,
+            required: function() { return this.type === 'file'; },
         },
         uploadedBy: {
             type: mongoose.Schema.Types.ObjectId,

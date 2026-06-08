@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
-import { X, Folder, AlignLeft, Shield, Zap, Target } from 'lucide-react';
+import { X, Folder, AlignLeft, Shield, Zap, Target, Users } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import * as ReactQuery from '@tanstack/react-query';
-import { projectService, workflowService } from '../../services/api/apiServices';
+import { projectService, workflowService, profileService } from '../../services/api/apiServices';
 
 const CreateProjectModal = ({ isOpen, onClose }) => {
     const { useQuery, useMutation, useQueryClient } = ReactQuery;
@@ -16,6 +16,16 @@ const CreateProjectModal = ({ isOpen, onClose }) => {
         }
     });
 
+    const { data: usersRaw } = useQuery({
+        queryKey: ['users'],
+        queryFn: async () => {
+            const res = await profileService.getAllUsers();
+            return res.users || res.data?.users || res.data || [];
+        },
+        enabled: isOpen
+    });
+    const users = Array.isArray(usersRaw) ? usersRaw : [];
+
     const [formData, setFormData] = useState({
         name: '',
         key: '',
@@ -23,6 +33,7 @@ const CreateProjectModal = ({ isOpen, onClose }) => {
         category: 'Software',
         defaultWorkflowId: '' // Will be set once workflows load
     });
+    const [selectedMembers, setSelectedMembers] = useState([]);
 
     // Sync default workflow when data loads
     React.useEffect(() => {
@@ -37,13 +48,14 @@ const CreateProjectModal = ({ isOpen, onClose }) => {
             queryClient.invalidateQueries({ queryKey: ['projects'] });
             onClose();
             setFormData({ name: '', key: '', description: '', category: 'Software', defaultWorkflowId: workflows?.[0]?._id || '' });
+            setSelectedMembers([]);
         }
     });
 
     const handleSubmit = (e) => {
         e.preventDefault();
         if (!formData.defaultWorkflowId) return;
-        createProject.mutate(formData);
+        createProject.mutate({ ...formData, members: selectedMembers });
     };
 
     if (!isOpen) return null;
@@ -149,6 +161,49 @@ const CreateProjectModal = ({ isOpen, onClose }) => {
                                     <option value="">No workflows available</option>
                                 )}
                             </select>
+                        </div>
+                    </div>
+
+                    <div className="space-y-2">
+                        <label className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">
+                            <Users className="w-3 h-3" />
+                            Add Project Members
+                        </label>
+                        <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto p-4 bg-slate-50 border-2 border-slate-100 rounded-2xl custom-scrollbar">
+                            {users.length === 0 ? (
+                                <span className="text-xs text-slate-400 italic">No users found</span>
+                            ) : (
+                                users.map(user => {
+                                    const isSelected = selectedMembers.includes(user._id);
+                                    return (
+                                        <button
+                                            type="button"
+                                            key={user._id}
+                                            onClick={() => {
+                                                if (isSelected) {
+                                                    setSelectedMembers(selectedMembers.filter(id => id !== user._id));
+                                                } else {
+                                                    setSelectedMembers([...selectedMembers, user._id]);
+                                                }
+                                            }}
+                                            className={cn(
+                                                "flex items-center gap-2 px-3 py-1.5 rounded-xl border text-xs font-bold transition-all",
+                                                isSelected 
+                                                    ? "bg-primary text-white border-primary shadow-md shadow-primary/15" 
+                                                    : "bg-white text-slate-600 border-slate-200 hover:border-primary/40"
+                                            )}
+                                        >
+                                            <div className={cn(
+                                                "w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-black uppercase",
+                                                isSelected ? "bg-white/20 text-white" : "bg-slate-100 text-slate-600"
+                                            )}>
+                                                {user.name?.substring(0, 2)}
+                                            </div>
+                                            {user.name}
+                                        </button>
+                                    );
+                                })
+                            )}
                         </div>
                     </div>
 

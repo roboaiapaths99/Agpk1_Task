@@ -69,6 +69,11 @@ const updateChecklistItemSchema = Joi.object({
     title: Joi.string().max(500),
     completed: Joi.boolean().truthy('true', 1).falsy('false', 0),
     assignee: Joi.string().hex().length(24).allow(null),
+    children: Joi.array().items(Joi.object({
+        _id: Joi.string().hex().length(24),
+        title: Joi.string().required(),
+        completed: Joi.boolean(),
+    })),
 }).min(1);
 
 const bulkCreateSchema = Joi.object({

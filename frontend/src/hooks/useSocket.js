@@ -1,65 +1,96 @@
-import { useEffect, useRef } from 'react';
-import { io } from 'socket.io-client';
-import useAuthStore from '../store/useAuth';
+/**
+ * Improved useSocket Hook
+ * Uses the centralized socket manager for better connection handling
+ * Prevents memory leaks and ensures proper cleanup
+ */
 
-const SOCKET_URL = process.env.REACT_APP_API_URL || window.location.origin;
+import { useEffect, useState, useCallback } from 'react';
+import useAuthStore from '../store/useAuth';
+import {
+    initSocket,
+    emitEvent as emit,
+    onEvent,
+    isSocketConnected,
+    disconnectSocket
+} from '../utils/socketManager';
 
 export const useSocket = (orgId) => {
-    const socketRef = useRef(null);
     const { user, accessToken } = useAuthStore();
+    const [isConnected, setIsConnected] = useState(false);
+    const [error, setError] = useState(null);
 
     useEffect(() => {
-        if (!orgId || !user || !accessToken) return;
+        // Don't initialize if missing required data
+        if (!orgId || !user || !accessToken) {
+            console.log('[useSocket] Waiting for auth data', { orgId, user: !!user, token: !!accessToken });
+            return;
+        }
 
-        // Initialize socket connection
-        socketRef.current = io(SOCKET_URL, {
-            transports: ['websocket'],
-            upgrade: false,
-            withCredentials: true,
-            auth: { token: accessToken }
+        // Initialize socket
+        const socket = initSocket(accessToken, orgId);
+        if (!socket) {
+            setError('Failed to initialize socket');
+            return;
+        }
+
+        // Listen for connection status
+        const unsubscribeConnect = onEvent('connect', () => {
+            setIsConnected(true);
+            setError(null);
         });
 
-        const socket = socketRef.current;
-
-        socket.on('connect', () => {
-            console.log('Connected to WebSocket Server');
-            socket.emit('join', orgId);
+        const unsubscribeDisconnect = onEvent('disconnect', () => {
+            setIsConnected(false);
         });
 
-        socket.on('connect_error', (err) => {
-            console.error('Socket Connection Error:', err);
+        const unsubscribeError = onEvent('error', (err) => {
+            setError(err?.message || 'Socket error');
         });
 
+        const unsubscribeConnectError = onEvent('connect_error', (err) => {
+            setError(err?.message || 'Connection error');
+        });
+
+        // Cleanup on unmount
         return () => {
-            if (socket) {
-                socket.disconnect();
-            }
+            unsubscribeConnect();
+            unsubscribeDisconnect();
+            unsubscribeError();
+            unsubscribeConnectError();
         };
     }, [orgId, user, accessToken]);
 
-    const emitEvent = (eventName, data) => {
-        if (socketRef.current) {
-            socketRef.current.emit(eventName, {
-                ...data,
-                orgId,
-                userId: user?._id
-            });
+    // Safe emit wrapper
+    const emitEvent = useCallback((eventName, data = {}) => {
+        if (!isSocketConnected()) {
+            console.warn(`[useSocket] Cannot emit "${eventName}" - not connected`);
+            return false;
         }
-    };
 
-    const subscribeToEvent = (eventName, callback) => {
-        if (socketRef.current) {
-            socketRef.current.on(eventName, callback);
-        }
-    };
-    const unsubscribeFromEvent = (eventName, callback) => {
-        if (socketRef.current) {
-            socketRef.current.off(eventName, callback);
-        }
-    };
+        return emit(eventName, data, orgId, user?._id);
+    }, [orgId, user]);
 
-    // Return the actual socket instance as well for more complex use cases
-    return { emitEvent, subscribeToEvent, unsubscribeFromEvent, socket: socketRef };
+    // Safe subscribe wrapper
+    const subscribeToEvent = useCallback((eventName, callback) => {
+        return onEvent(eventName, callback);
+    }, []);
+
+    // Safe unsubscribe wrapper
+    const unsubscribeFromEvent = useCallback((eventName, callback) => {
+        const socket = initSocket(accessToken, orgId);
+        if (socket) {
+            socket.off(eventName, callback);
+        }
+    }, [accessToken, orgId]);
+
+    return {
+        isConnected,
+        error,
+        emitEvent,
+        subscribeToEvent,
+        unsubscribeFromEvent,
+        socket: { connected: isSocketConnected() }
+    };
 };
 
 export default useSocket;

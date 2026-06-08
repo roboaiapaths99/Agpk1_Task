@@ -4,22 +4,49 @@ import {
     TrendingDown,
     UserPlus,
     Sparkles,
-    AlertCircle
+    AlertCircle,
+    Loader2
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../services/api/axios';
 import { cn } from '../../lib/utils';
 
 const AIInsights = ({ taskId }) => {
-    const { data: suggestion } = useQuery({
+    const { data: suggestionRaw, isLoading: isSugLoading, isError: isSugError } = useQuery({
         queryKey: ['ai-suggestion', taskId],
         queryFn: () => api.get(`/ai/suggest-assignee/${taskId}`),
+        retry: false
     });
 
-    const { data: risk } = useQuery({
+    const { data: riskRaw, isLoading: isRiskLoading, isError: isRiskError } = useQuery({
         queryKey: ['ai-risk', taskId],
         queryFn: () => api.get(`/ai/predict-risk/${taskId}`),
+        retry: false
     });
+
+    if (isSugLoading || isRiskLoading) {
+        return (
+            <div className="flex flex-col items-center justify-center py-12 space-y-3">
+                <Loader2 className="w-8 h-8 text-primary animate-spin" />
+                <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Analyzing task with AI...</p>
+            </div>
+        );
+    }
+
+    const suggestion = suggestionRaw?.data;
+    const risk = riskRaw?.data;
+
+    const riskScore = risk?.riskScore !== undefined ? `${risk.riskScore}%` : 'N/A';
+    const riskLevel = risk?.riskLevel || (risk?.risk !== undefined ? risk.risk : 'Unknown');
+    const riskColor = riskLevel === 'low' ? 'text-green-500 bg-green-50' : 
+                      riskLevel === 'medium' ? 'text-orange-500 bg-orange-50' :
+                      riskLevel === 'high' ? 'text-red-500 bg-red-50' : 'text-slate-500 bg-slate-50';
+    const riskDesc = risk?.factors && risk.factors.length > 0 
+        ? risk.factors.join(', ')
+        : 'Predicted completion risk by target date.';
+
+    const suggestedName = suggestion?.name || 'Unassigned / Suggestion';
+    const suggestionReason = suggestion?.reason || 'Smart match based on workload peaks and expertise.';
 
     return (
         <div className="space-y-6">
@@ -38,10 +65,10 @@ const AIInsights = ({ taskId }) => {
                     </div>
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Risk Predictor</p>
                     <div className="flex items-center gap-2">
-                        <span className="text-2xl font-black text-slate-900 italic">24%</span>
-                        <span className="text-[10px] font-bold text-green-500 bg-green-50 px-1.5 py-0.5 rounded">Low Risk</span>
+                        <span className="text-2xl font-black text-slate-900 italic">{riskScore}</span>
+                        <span className={cn("text-[10px] font-bold px-1.5 py-0.5 rounded uppercase", riskColor)}>{riskLevel} Risk</span>
                     </div>
-                    <p className="text-[10px] text-slate-500 mt-2 font-medium">Predicted completion by target date is highly probable.</p>
+                    <p className="text-[10px] text-slate-500 mt-2 font-medium">{riskDesc}</p>
                 </div>
 
                 {/* Suggestion */}
@@ -51,17 +78,17 @@ const AIInsights = ({ taskId }) => {
                     </div>
                     <p className="text-[10px] font-black text-primary/60 uppercase tracking-widest mb-1">Smart Match</p>
                     <div className="flex items-center gap-2">
-                        <span className="text-lg font-black text-slate-900 italic">Amit Mishra</span>
+                        <span className="text-lg font-black text-slate-900 italic">{suggestedName}</span>
                         <Sparkles className="w-3.5 h-3.5 text-yellow-500 animate-pulse" />
                     </div>
-                    <p className="text-[10px] text-slate-500 mt-2 font-medium">92% match based on recent Node.js workload peaks.</p>
+                    <p className="text-[10px] text-slate-500 mt-2 font-medium">{suggestionReason}</p>
                 </div>
             </div>
 
             <div className="p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100 flex gap-4">
                 <AlertCircle className="w-5 h-5 text-indigo-500 shrink-0" />
                 <p className="text-[11px] text-indigo-700 font-bold leading-relaxed italic">
-                    AI detects a potential bottleneck in next week's review stage. Consider pre-assigning a second reviewer to maintain SLA compliance.
+                    AI recommendation: Maintain assignee workload and verify subtasks sequence to keep within SLA compliance.
                 </p>
             </div>
         </div>

@@ -69,7 +69,7 @@ const WorkflowModal = ({ isOpen, onClose, task, targetStatus, onSuccess }) => {
                     {error && (
                         <div className="p-3 bg-red-50 border border-red-100 rounded-xl flex items-center gap-2 text-red-600 text-xs font-bold animate-shake">
                             <AlertCircle className="w-4 h-4 shrink-0" />
-                            {error.message || String(error)}
+                            {typeof error === 'object' && error !== null ? error.message : error}
                         </div>
                     )}
 

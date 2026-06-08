@@ -5,6 +5,7 @@ import useAuthStore from './store/useAuth';
 import useUIStore from './store/useUI';
 import { Toaster } from 'react-hot-toast';
 import { BrandingProvider } from './context/BrandingContext';
+import ErrorBoundary from './components/ErrorBoundary';
 
 // Layouts
 import MainLayout from './layouts/MainLayout';
@@ -44,6 +45,8 @@ import TeamPulsePage from './pages/TeamPulsePage';
 import InsightsPage from './pages/InsightsPage';
 import MessagingPage from './pages/MessagingPage';
 import CommandPalette from './services/CommandPalette';
+import SubModulePage from './pages/SubModulePage';
+import { Package, Briefcase, Camera, Users } from 'lucide-react';
 
 import FinanceDashboard from './modules/finance/dashboard/FinanceDashboard';
 import LedgerExplorer from './modules/finance/ledger/LedgerExplorer';
@@ -82,6 +85,13 @@ const queryClient = new QueryClient({
   },
 });
 
+const AdminRoute = ({ children }) => {
+  const { user, isAuthenticated } = useAuthStore();
+  if (!isAuthenticated) return <Navigate to="/login" />;
+  if (user?.role !== 'admin') return <Navigate to="/dashboard" />;
+  return children;
+};
+
 function App() {
   const { isAuthenticated, fetchMe } = useAuthStore();
   const { initTheme } = useUIStore();
@@ -109,9 +119,10 @@ function App() {
             },
           }}
         />
-        <Router>
-          <CommandPalette />
-          <Routes>
+        <ErrorBoundary>
+          <Router>
+            <CommandPalette />
+            <Routes>
             <Route path="/login" element={!isAuthenticated ? <Login /> : <Navigate to="/" />} />
             <Route path="/signup" element={!isAuthenticated ? <Signup /> : <Navigate to="/" />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
@@ -131,22 +142,56 @@ function App() {
               <Route path="settings" element={<SettingsPage />} />
               <Route path="backlog" element={<Backlog />} />
               <Route path="sprints" element={<SprintDashboard />} />
-              <Route path="organization" element={<OrganizationPage />} />
-              <Route path="organization/hierarchy" element={<OrgChartPage />} />
+              <Route path="organization" element={<AdminRoute><OrganizationPage /></AdminRoute>} />
+              <Route path="organization/hierarchy" element={<AdminRoute><OrgChartPage /></AdminRoute>} />
               <Route path="workflows" element={<WorkflowPage />} />
-              <Route path="integrations" element={<IntegrationsPage />} />
+              <Route path="integrations" element={<AdminRoute><IntegrationsPage /></AdminRoute>} />
               <Route path="docs" element={<DocsPage />} />
               <Route path="okrs" element={<OKRPage />} />
               <Route path="table" element={<TableViewPage />} />
               <Route path="resources" element={<ResourceDashboard />} />
-              <Route path="audit" element={<ActivityFeedPage />} />
-              <Route path="rbac" element={<RBACPage />} />
-              <Route path="sla" element={<SLAPage />} />
-              <Route path="export" element={<ExportCenterPage />} />
+              <Route path="audit" element={<AdminRoute><ActivityFeedPage /></AdminRoute>} />
+              <Route path="rbac" element={<AdminRoute><RBACPage /></AdminRoute>} />
+              <Route path="sla" element={<AdminRoute><SLAPage /></AdminRoute>} />
+              <Route path="export" element={<AdminRoute><ExportCenterPage /></AdminRoute>} />
               <Route path="work-graph" element={<WorkGraphPage />} />
               <Route path="team-pulse" element={<TeamPulsePage />} />
               <Route path="insights" element={<InsightsPage />} />
               <Route path="messaging" element={<MessagingPage />} />
+
+              {/* Sub-module Embed Routes */}
+              <Route path="inventory" element={
+                <SubModulePage 
+                  title="Inventory System" 
+                  url="https://inventory.agpkacademy.in/login" 
+                  icon={Package} 
+                  description="Real-time stock management, procurement, and warehouse tracking." 
+                />
+              } />
+              <Route path="crm" element={
+                <SubModulePage 
+                  title="CRM System" 
+                  url="https://crm.agpkacademy.in" 
+                  icon={Briefcase} 
+                  description="Client relationship management, pipelines, and contact logs." 
+                />
+              } />
+              <Route path="attendance" element={
+                <SubModulePage 
+                  title="Attendance Pulse" 
+                  url="https://attendence-inofice-admin-desk.vercel.app/" 
+                  icon={Camera} 
+                  description="Office attendance tracking, timesheets, and monitoring desk." 
+                />
+              } />
+              <Route path="hrms" element={
+                <SubModulePage 
+                  title="HRMS Portal" 
+                  url="https://hrms.agpkacademy.in/" 
+                  icon={Users} 
+                  description="Human resource management system, documents, and benefits." 
+                />
+              } />
 
               <Route path="finance">
                 <Route index element={<FinanceDashboard />} />
@@ -189,6 +234,7 @@ function App() {
             <Route path="*" element={<NotFoundPage />} />
           </Routes>
         </Router>
+        </ErrorBoundary>
       </BrandingProvider>
     </QueryClientProvider>
   );

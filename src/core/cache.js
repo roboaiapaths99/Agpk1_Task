@@ -9,6 +9,7 @@ class CacheService {
         this.cache = new Map();
         this.redis = null; // Placeholder for Redis client
         this.isRedisEnabled = false;
+        this.defaultTtl = parseInt(process.env.CACHE_TTL, 10) || 3600;
 
         // Initialize Redis if REDIS_URL is provided in environment
         if (process.env.REDIS_URL) {

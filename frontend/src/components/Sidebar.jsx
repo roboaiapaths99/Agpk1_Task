@@ -29,7 +29,10 @@ import {
     MessageSquare,
     DollarSign,
     PieChart,
-    Circle
+    Circle,
+    Package,
+    Briefcase,
+    Camera
 } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { cn } from '../lib/utils';
@@ -57,6 +60,10 @@ const navItems = [
     { icon: GitBranch, label: 'Work Graph', path: '/work-graph' },
     { icon: Zap, label: 'AI Insights', path: '/insights' },
     { icon: BookOpen, label: 'Docs', path: '/docs' },
+    { icon: Package, label: 'Inventory', path: '/inventory' },
+    { icon: Briefcase, label: 'CRM', path: '/crm' },
+    { icon: Camera, label: 'Attendance Pulse', path: '/attendance' },
+    { icon: Users, label: 'HRMS Portal', path: '/hrms' },
     { icon: Bell, label: 'Notifications', path: '/notifications' },
     { icon: Building2, label: 'Organization', path: '/organization', adminOnly: true },
     { icon: GitMerge, label: 'Integrations', path: '/integrations', adminOnly: true },

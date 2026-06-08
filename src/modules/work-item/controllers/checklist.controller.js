@@ -37,6 +37,13 @@ class ChecklistController {
             return success(res, null, 'Checklist deleted');
         } catch (error) { next(error); }
     }
+
+    async deleteChecklistItem(req, res, next) {
+        try {
+            const checklist = await taskService.deleteChecklistItem(req.params.checklistId, req.user.organizationId, req.params.itemId);
+            return success(res, { checklist }, 'Checklist item deleted');
+        } catch (error) { next(error); }
+    }
 }
 
 module.exports = new ChecklistController();

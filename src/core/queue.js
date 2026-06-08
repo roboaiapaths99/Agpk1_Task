@@ -9,9 +9,29 @@ const logger = require('./logger');
 class QueueService {
     constructor() {
         this.queues = new Map();
-        this.connection = {
-            url: config.cache.redisUrl || 'redis://localhost:6379'
-        };
+        
+        const redisUrl = config.cache.redisUrl || 'redis://localhost:6379';
+        let connectionOpts = { host: 'localhost', port: 6379 };
+        try {
+            const parsed = new URL(redisUrl);
+            connectionOpts = {
+                host: parsed.hostname || 'localhost',
+                port: parsed.port ? parseInt(parsed.port, 10) : 6379
+            };
+            if (parsed.username) connectionOpts.username = parsed.username;
+            if (parsed.password) connectionOpts.password = decodeURIComponent(parsed.password);
+            if (parsed.pathname && parsed.pathname !== '/') {
+                const db = parseInt(parsed.pathname.substring(1), 10);
+                if (!isNaN(db)) connectionOpts.db = db;
+            }
+            if (parsed.protocol === 'rediss:') {
+                connectionOpts.tls = {};
+            }
+        } catch (err) {
+            logger.error('Failed to parse REDIS_URL in queue.js:', err);
+        }
+        
+        this.connection = connectionOpts;
     }
 
     /**

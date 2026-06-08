@@ -2,12 +2,12 @@ import React from 'react';
 import {
     X, MessageSquare, CheckSquare, Activity, Info, User, Calendar,
     Paperclip, Plus, Send, Loader2, Trash2, Archive, Layers, Link as LinkIcon,
-    GitMerge, Search, History, Clock, Sparkles
+    GitMerge, Search, History, Clock, Sparkles, FileText, Image, Video, FileArchive, Link2, ArrowLeft
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
-import { taskService, workflowService, attachmentService, commonService } from '../../services/api/apiServices';
+import { taskService, workflowService, attachmentService, commonService, projectService } from '../../services/api/apiServices';
 import { cn } from '../../lib/utils';
 import WorklogList from './WorklogList';
 import { format } from 'date-fns';
@@ -31,10 +31,41 @@ const STATUS_OPTIONS = ['open', 'in_progress', 'in_review', 'completed', 'blocke
 
 const TaskDetailModal = ({ task: initialTask, taskId, onClose, onUpdate, isOpen }) => {
     const queryClient = useQueryClient();
+    const [currentTaskId, setCurrentTaskId] = React.useState(taskId || initialTask?._id);
+    const [taskIdHistory, setTaskIdHistory] = React.useState([]);
+
+    React.useEffect(() => {
+        if (isOpen) {
+            setCurrentTaskId(taskId || initialTask?._id);
+            setTaskIdHistory([]);
+        }
+    }, [isOpen, taskId, initialTask]);
+
+    const handleNavigateToTask = (id) => {
+        setTaskIdHistory(prev => [...prev, currentTaskId]);
+        setCurrentTaskId(id);
+    };
+
+    const handleNavigateBack = () => {
+        setTaskIdHistory(prev => {
+            const copy = [...prev];
+            const prevId = copy.pop();
+            if (prevId) {
+                setCurrentTaskId(prevId);
+            }
+            return copy;
+        });
+    };
+
     const [activeTab, setActiveTab] = React.useState('details');
     const [newComment, setNewComment] = React.useState('');
     const [newChecklistItem, setNewChecklistItem] = React.useState('');
-    const [newSubTask, setNewSubTask] = React.useState('');
+    const [newChildText, setNewChildText] = React.useState({});
+    const [subTaskForm, setSubTaskForm] = React.useState({
+        title: '',
+        assignee: '',
+        priority: 'medium',
+    });
     const [linkSearch, setLinkSearch] = React.useState('');
     const [linkType, setLinkType] = React.useState('is_blocked_by');
     const [linkSearchResults, setLinkSearchResults] = React.useState([]);
@@ -50,15 +81,28 @@ const TaskDetailModal = ({ task: initialTask, taskId, onClose, onUpdate, isOpen 
     const [startDate, setStartDate] = React.useState(initialTask?.startDate || '');
     const [dueDate, setDueDate] = React.useState(initialTask?.dueDate || '');
     const [isAIBreakdownOpen, setIsAIBreakdownOpen] = React.useState(false);
+    const [showLinkForm, setShowLinkForm] = React.useState(false);
+    const [linkUrl, setLinkUrl] = React.useState('');
+    const [linkName, setLinkName] = React.useState('');
 
     // ─── Queries ────────────────────────────────────────────
     const { data: fetchedTaskRaw, isLoading: isTaskLoading } = useQuery({
-        queryKey: ['task-detail', taskId || initialTask?._id],
-        queryFn: () => taskService.getById(taskId || initialTask?._id),
-        enabled: !!(taskId || initialTask?._id),
+        queryKey: ['task-detail', currentTaskId],
+        queryFn: () => taskService.getById(currentTaskId),
+        enabled: !!currentTaskId,
     });
 
     const task = fetchedTaskRaw?.task || fetchedTaskRaw?.data?.task || fetchedTaskRaw?.data || initialTask;
+
+    const { data: projectMembersRaw } = useQuery({
+        queryKey: ['project-members', task?.project?._id || task?.project],
+        queryFn: () => projectService.getMembers(task?.project?._id || task?.project),
+        enabled: !!(task?.project?._id || task?.project),
+    });
+
+    const projectMembers = Array.isArray(projectMembersRaw?.members) ? projectMembersRaw.members
+        : Array.isArray(projectMembersRaw?.data?.members) ? projectMembersRaw.data.members
+            : Array.isArray(projectMembersRaw?.data) ? projectMembersRaw.data : [];
 
     React.useEffect(() => {
         if (task) {
@@ -73,33 +117,33 @@ const TaskDetailModal = ({ task: initialTask, taskId, onClose, onUpdate, isOpen 
 
     // ─── Queries ────────────────────────────────────────────
     const { data: commentsRaw } = useQuery({
-        queryKey: ['comments', task?._id],
-        queryFn: () => taskService.getComments(task._id),
-        enabled: !!task?._id && activeTab === 'comments',
+        queryKey: ['comments', currentTaskId],
+        queryFn: () => taskService.getComments(currentTaskId),
+        enabled: !!currentTaskId && activeTab === 'comments',
     });
 
     const { data: checklistsRaw } = useQuery({
-        queryKey: ['checklists', task?._id],
-        queryFn: () => taskService.getChecklists(task._id),
-        enabled: !!task?._id && activeTab === 'checklist',
+        queryKey: ['checklists', currentTaskId],
+        queryFn: () => taskService.getChecklists(currentTaskId),
+        enabled: !!currentTaskId && activeTab === 'checklist',
     });
 
     const { data: activityRaw } = useQuery({
-        queryKey: ['activity', task?._id],
-        queryFn: () => workflowService.getHistory(task._id),
-        enabled: !!task?._id && activeTab === 'activity',
+        queryKey: ['activity', currentTaskId],
+        queryFn: () => workflowService.getHistory(currentTaskId),
+        enabled: !!currentTaskId && activeTab === 'activity',
     });
 
     const { data: subtasksRaw } = useQuery({
-        queryKey: ['subtasks', task?._id],
-        queryFn: () => taskService.getSubTasks(task._id),
-        enabled: !!task?._id && activeTab === 'subtasks',
+        queryKey: ['subtasks', currentTaskId],
+        queryFn: () => taskService.getSubTasks(currentTaskId),
+        enabled: !!currentTaskId && activeTab === 'subtasks',
     });
 
     const { data: attachmentsRaw } = useQuery({
-        queryKey: ['attachments', task?._id],
-        queryFn: () => attachmentService.getByTask(task._id),
-        enabled: !!task?._id && activeTab === 'attachments',
+        queryKey: ['attachments', currentTaskId],
+        queryFn: () => attachmentService.getByTask(currentTaskId),
+        enabled: !!currentTaskId && activeTab === 'attachments',
     });
 
     const comments = Array.isArray(commentsRaw?.comments) ? commentsRaw.comments
@@ -159,11 +203,11 @@ const TaskDetailModal = ({ task: initialTask, taskId, onClose, onUpdate, isOpen 
     });
 
     const addSubTask = useMutation({
-        mutationFn: (title) => taskService.createSubTask(task._id, { title }),
+        mutationFn: (data) => taskService.createSubTask(task._id, data),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['subtasks', task._id] });
             queryClient.invalidateQueries({ queryKey: ['kanban'] });
-            setNewSubTask('');
+            setSubTaskForm({ title: '', assignee: '', priority: 'medium' });
             toast.success('Sub-task created');
         },
         onError: () => toast.error('Failed to create sub-task')
@@ -208,6 +252,21 @@ const TaskDetailModal = ({ task: initialTask, taskId, onClose, onUpdate, isOpen 
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['attachments', task._id] });
         },
+    });
+
+    const addLinkAttachment = useMutation({
+        mutationFn: ({ url, filename }) => attachmentService.addLink(task._id, url, filename),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['attachments', task._id] });
+            setShowLinkForm(false);
+            setLinkUrl('');
+            setLinkName('');
+            toast.success('Link attached successfully!');
+        },
+        onError: (err) => {
+            const msg = err.response?.data?.message || err.message || 'Failed to attach link';
+            toast.error(msg);
+        }
     });
 
     const deleteTask = useMutation({
@@ -315,10 +374,78 @@ const TaskDetailModal = ({ task: initialTask, taskId, onClose, onUpdate, isOpen 
     };
 
 
+    const handleToggleChecklistItem = async (checklistId, itemId, completed) => {
+        try {
+            await taskService.updateChecklistItem(checklistId, itemId, { completed: !completed });
+            queryClient.invalidateQueries({ queryKey: ['checklists', task._id] });
+        } catch (err) {
+            toast.error('Failed to update checklist item');
+        }
+    };
+
+    const handleAssignChecklistItem = async (checklistId, itemId, assigneeId) => {
+        try {
+            await taskService.updateChecklistItem(checklistId, itemId, { assignee: assigneeId || null });
+            queryClient.invalidateQueries({ queryKey: ['checklists', task._id] });
+            toast.success('Assignee updated');
+        } catch (err) {
+            toast.error('Failed to update assignee');
+        }
+    };
+
+    const handleDeleteChecklistItem = async (checklistId, itemId) => {
+        try {
+            await taskService.deleteChecklistItem(checklistId, itemId);
+            queryClient.invalidateQueries({ queryKey: ['checklists', task._id] });
+            toast.success('Checklist item deleted');
+        } catch (err) {
+            toast.error('Failed to delete checklist item');
+        }
+    };
+
+    const handleDeleteChecklist = async (checklistId) => {
+        try {
+            await taskService.deleteChecklist(checklistId);
+            queryClient.invalidateQueries({ queryKey: ['checklists', task._id] });
+            toast.success('Checklist deleted');
+        } catch (err) {
+            toast.error('Failed to delete checklist');
+        }
+    };
+
+    const handleToggleChecklistChild = async (checklist, item, childIdx, completed) => {
+        try {
+            const updatedChildren = item.children.map((child, idx) => 
+                idx === childIdx ? { ...child, completed } : child
+            );
+            await taskService.updateChecklistItem(checklist._id, item._id, { children: updatedChildren });
+            queryClient.invalidateQueries({ queryKey: ['checklists', task._id] });
+        } catch (err) {
+            toast.error('Failed to update sub-item');
+        }
+    };
+
+    const handleAddChecklistChild = async (checklist, item, title) => {
+        if (!title.trim()) return;
+        try {
+            const updatedChildren = [...(item.children || []), { title: title.trim(), completed: false }];
+            await taskService.updateChecklistItem(checklist._id, item._id, { children: updatedChildren });
+            queryClient.invalidateQueries({ queryKey: ['checklists', task._id] });
+            toast.success('Sub-item added');
+        } catch (err) {
+            toast.error('Failed to add sub-item');
+        }
+    };
+
+
     const handleAddSubTask = (e) => {
         e.preventDefault();
-        if (!newSubTask.trim()) return;
-        addSubTask.mutate(newSubTask.trim());
+        if (!subTaskForm.title.trim()) return;
+        addSubTask.mutate({
+            title: subTaskForm.title.trim(),
+            priority: subTaskForm.priority,
+            ...(subTaskForm.assignee && { assignee: subTaskForm.assignee }),
+        });
     };
 
     const handleLinkSearch = async (val) => {
@@ -353,6 +480,12 @@ const TaskDetailModal = ({ task: initialTask, taskId, onClose, onUpdate, isOpen 
         uploadAttachment.mutate(formData);
     };
 
+    const calculateProgress = (checklist) => {
+        if (!checklist.items || checklist.items.length === 0) return 0;
+        const completed = checklist.items.filter(item => item.completed).length;
+        return Math.round((completed / checklist.items.length) * 100);
+    };
+
     if (!task) return null;
 
     return (
@@ -364,6 +497,15 @@ const TaskDetailModal = ({ task: initialTask, taskId, onClose, onUpdate, isOpen 
                     {/* Header */}
                     <div className="p-6 border-b flex items-center justify-between">
                         <div className="flex items-center gap-4 flex-1 min-w-0">
+                            {taskIdHistory.length > 0 && (
+                                <button
+                                    onClick={handleNavigateBack}
+                                    className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-500 hover:text-slate-700 transition-colors mr-1 shrink-0"
+                                    title="Go back to parent task"
+                                >
+                                    <ArrowLeft className="w-4.5 h-4.5" />
+                                </button>
+                            )}
                             <span className="bg-slate-100 text-slate-500 px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-widest shrink-0">
                                 {task.key || `T-${task._id?.slice(-3)}`}
                             </span>
@@ -571,22 +713,58 @@ const TaskDetailModal = ({ task: initialTask, taskId, onClose, onUpdate, isOpen 
                                     <h4 className="font-bold text-slate-800 italic">Child Issues</h4>
                                 </div>
 
-                                <form onSubmit={handleAddSubTask} className="flex gap-3">
-                                    <input
-                                        type="text"
-                                        value={newSubTask}
-                                        onChange={(e) => setNewSubTask(e.target.value)}
-                                        placeholder="What needs to be done?"
-                                        className="flex-1 bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-4 text-sm outline-none focus:ring-2 focus:ring-primary/20"
-                                    />
-                                    <button
-                                        type="submit"
-                                        disabled={addSubTask.isPending || !newSubTask.trim()}
-                                        className="px-6 py-2.5 bg-primary text-white rounded-xl text-sm font-bold hover:bg-primary/90 transition-all disabled:opacity-50 flex items-center gap-2"
-                                    >
-                                        {addSubTask.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-                                        Create
-                                    </button>
+                                <form onSubmit={handleAddSubTask} className="space-y-3 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                                    <div className="flex gap-3">
+                                        <input
+                                            type="text"
+                                            value={subTaskForm.title}
+                                            onChange={(e) => setSubTaskForm({ ...subTaskForm, title: e.target.value })}
+                                            placeholder="Subtask summary / what needs to be done?"
+                                            className="flex-1 bg-white border border-slate-200 rounded-xl py-2 px-3.5 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+                                        />
+                                    </div>
+                                    <div className="flex flex-wrap gap-3 items-center justify-between">
+                                        <div className="flex gap-4 items-center">
+                                            {/* Assignee select */}
+                                            <div className="flex items-center gap-1.5">
+                                                <span className="text-xs text-slate-500 font-bold">Assignee:</span>
+                                                <select
+                                                    value={subTaskForm.assignee}
+                                                    onChange={(e) => setSubTaskForm({ ...subTaskForm, assignee: e.target.value })}
+                                                    className="bg-white border border-slate-200 rounded-lg py-1 px-2 text-xs font-semibold focus:ring-1 focus:ring-primary/20 outline-none"
+                                                >
+                                                    <option value="">Unassigned</option>
+                                                    {projectMembers.map(u => (
+                                                        <option key={u._id} value={u._id}>{u.name}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+
+                                            {/* Priority select */}
+                                            <div className="flex items-center gap-1.5">
+                                                <span className="text-xs text-slate-500 font-bold">Priority:</span>
+                                                <select
+                                                    value={subTaskForm.priority}
+                                                    onChange={(e) => setSubTaskForm({ ...subTaskForm, priority: e.target.value })}
+                                                    className="bg-white border border-slate-200 rounded-lg py-1 px-2 text-xs font-semibold focus:ring-1 focus:ring-primary/20 outline-none"
+                                                >
+                                                    <option value="low">Low</option>
+                                                    <option value="medium">Medium</option>
+                                                    <option value="high">High</option>
+                                                    <option value="critical">Critical</option>
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <button
+                                            type="submit"
+                                            disabled={addSubTask.isPending || !subTaskForm.title.trim()}
+                                            className="px-4 py-1.5 bg-primary text-white rounded-xl text-xs font-bold hover:bg-primary/90 transition-all disabled:opacity-50 flex items-center gap-1.5"
+                                        >
+                                            {addSubTask.isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                                            Create Subtask
+                                        </button>
+                                    </div>
                                 </form>
 
                                 {subtasks.length === 0 ? (
@@ -596,7 +774,11 @@ const TaskDetailModal = ({ task: initialTask, taskId, onClose, onUpdate, isOpen 
                                 ) : (
                                     <div className="space-y-3">
                                         {subtasks.map((st) => (
-                                            <div key={st._id} className="flex items-center justify-between p-4 rounded-2xl bg-white border border-slate-100 hover:border-primary/30 transition-all group shadow-sm">
+                                            <div 
+                                                key={st._id} 
+                                                onClick={() => handleNavigateToTask(st._id)}
+                                                className="flex items-center justify-between p-4 rounded-2xl bg-white border border-slate-100 hover:border-primary/30 hover:bg-slate-50 cursor-pointer transition-all group shadow-sm"
+                                            >
                                                 <div className="flex items-center gap-4 min-w-0">
                                                     <div className={cn(
                                                         "w-2 h-2 rounded-full",
@@ -617,7 +799,15 @@ const TaskDetailModal = ({ task: initialTask, taskId, onClose, onUpdate, isOpen 
                                                         </div>
                                                     </div>
                                                 </div>
-                                                <div className="flex items-center gap-3">
+                                                <div className="flex items-center gap-3 shrink-0">
+                                                    <span className={cn(
+                                                        "text-[10px] font-bold px-2 py-0.5 rounded-md uppercase",
+                                                        st.priority === 'critical' ? 'bg-red-50 text-red-600' :
+                                                            st.priority === 'high' ? 'bg-orange-50 text-orange-600' :
+                                                                st.priority === 'medium' ? 'bg-blue-50 text-blue-600' : 'bg-slate-50 text-slate-600'
+                                                    )}>
+                                                        {st.priority || 'medium'}
+                                                    </span>
                                                     <span className={cn(
                                                         "text-[10px] font-bold px-2 py-0.5 rounded-md uppercase",
                                                         st.status === 'completed' ? "bg-green-50 text-green-600" : "bg-blue-50 text-blue-600"
@@ -771,21 +961,112 @@ const TaskDetailModal = ({ task: initialTask, taskId, onClose, onUpdate, isOpen 
                                     <p className="text-center text-slate-400 italic py-8">No checklists yet. Add one below.</p>
                                 ) : (
                                     checklists.map((checklist) => (
-                                        <div key={checklist._id} className="space-y-3">
-                                            <h4 className="font-bold text-sm text-slate-700">{checklist.title || 'Checklist'}</h4>
-                                            {checklist.items?.map((item) => (
-                                                <div key={item._id} className="flex items-center gap-4 p-3 rounded-xl bg-white border border-slate-100 hover:border-primary transition-all group">
-                                                    <button
-                                                        onClick={() => taskService.toggleChecklistItem(checklist._id, item._id).then(() => {
-                                                            queryClient.invalidateQueries({ queryKey: ['checklists', task._id] });
-                                                        })}
-                                                        className="w-5 h-5 rounded-md border-2 border-slate-300 flex items-center justify-center hover:border-primary transition-colors"
-                                                    >
-                                                        {item.completed && <CheckSquare className="w-4 h-4 text-primary" />}
-                                                    </button>
-                                                    <span className={cn("text-sm font-medium flex-1", item.completed && "text-slate-400 line-through")}>{item.text}</span>
+                                        <div key={checklist._id} className="space-y-4 bg-slate-50/50 p-4 rounded-2xl border border-slate-100">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2">
+                                                    <h4 className="font-bold text-sm text-slate-700">{checklist.title || 'Checklist'}</h4>
+                                                    <span className="text-xs bg-slate-200 text-slate-650 px-2 py-0.5 rounded-full font-bold">
+                                                        {calculateProgress(checklist)}%
+                                                    </span>
                                                 </div>
-                                            ))}
+                                                <button
+                                                    onClick={() => handleDeleteChecklist(checklist._id)}
+                                                    className="p-1 text-slate-400 hover:text-red-500 transition-colors"
+                                                    title="Delete Checklist"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                            {/* Progress Bar */}
+                                            <div className="bg-slate-200/60 rounded-full h-1.5 overflow-hidden">
+                                                <div 
+                                                    className="bg-primary h-1.5 transition-all duration-300" 
+                                                    style={{ width: `${calculateProgress(checklist)}%` }}
+                                                />
+                                            </div>
+
+                                            <div className="space-y-2.5">
+                                                {checklist.items?.map((item) => (
+                                                    <div key={item._id} className="p-3.5 rounded-xl bg-white border border-slate-100 hover:border-primary/20 transition-all group shadow-sm">
+                                                        <div className="flex items-center gap-3">
+                                                            <button
+                                                                onClick={() => handleToggleChecklistItem(checklist._id, item._id, item.completed)}
+                                                                className="w-5 h-5 rounded-md border-2 border-slate-300 flex items-center justify-center hover:border-primary transition-colors shrink-0"
+                                                            >
+                                                                {item.completed && <CheckSquare className="w-4 h-4 text-primary" />}
+                                                            </button>
+                                                            <span className={cn("text-sm font-semibold text-slate-800 flex-1 min-w-0 truncate", item.completed && "text-slate-400 line-through")}>
+                                                                {item.title || item.text}
+                                                            </span>
+                                                            <div className="flex items-center gap-2 shrink-0">
+                                                                {/* Assignee select */}
+                                                                <select
+                                                                    value={item.assignee || ''}
+                                                                    onChange={(e) => handleAssignChecklistItem(checklist._id, item._id, e.target.value)}
+                                                                    className="bg-slate-50 border border-slate-200 rounded-lg py-1 px-1.5 text-[10px] font-bold text-slate-650 focus:ring-1 focus:ring-primary/20 outline-none max-w-[120px]"
+                                                                >
+                                                                    <option value="">Unassigned</option>
+                                                                    {projectMembers.map(u => (
+                                                                        <option key={u._id} value={u._id}>{u.name}</option>
+                                                                    ))}
+                                                                </select>
+                                                                <button
+                                                                    onClick={() => handleDeleteChecklistItem(checklist._id, item._id)}
+                                                                    className="p-1 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-colors"
+                                                                    title="Delete item"
+                                                                >
+                                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                                </button>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Sub-items (Children) list */}
+                                                        {item.children && item.children.length > 0 && (
+                                                            <div className="pl-8 mt-2 space-y-2 border-l-2 border-slate-100">
+                                                                {item.children.map((child, childIdx) => (
+                                                                    <div key={child._id || childIdx} className="flex items-center gap-2">
+                                                                        <button
+                                                                            onClick={() => handleToggleChecklistChild(checklist, item, childIdx, !child.completed)}
+                                                                            className="w-4 h-4 rounded border border-slate-300 flex items-center justify-center hover:border-primary transition-colors shrink-0"
+                                                                        >
+                                                                            {child.completed && <CheckSquare className="w-3 h-3 text-primary" />}
+                                                                        </button>
+                                                                        <span className={cn("text-xs font-semibold text-slate-605", child.completed && "text-slate-400 line-through")}>
+                                                                            {child.title}
+                                                                        </span>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        )}
+
+                                                        {/* Add Sub-item Form */}
+                                                        <div className="flex gap-2 pl-8 mt-2.5">
+                                                            <input
+                                                                type="text"
+                                                                placeholder="Add sub-item..."
+                                                                value={newChildText[item._id] || ''}
+                                                                onChange={(e) => setNewChildText({ ...newChildText, [item._id]: e.target.value })}
+                                                                onKeyDown={(e) => {
+                                                                    if (e.key === 'Enter') {
+                                                                        handleAddChecklistChild(checklist, item, newChildText[item._id] || '');
+                                                                        setNewChildText({ ...newChildText, [item._id]: '' });
+                                                                    }
+                                                                }}
+                                                                className="flex-1 bg-slate-50 border border-slate-150 rounded-lg py-1 px-2 text-[11px] font-medium outline-none focus:ring-1 focus:ring-primary/20"
+                                                            />
+                                                            <button
+                                                                onClick={() => {
+                                                                    handleAddChecklistChild(checklist, item, newChildText[item._id] || '');
+                                                                    setNewChildText({ ...newChildText, [item._id]: '' });
+                                                                }}
+                                                                className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 rounded-lg text-[10px] font-bold text-slate-650"
+                                                            >
+                                                                Add
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
                                         </div>
                                     ))
                                 )}
@@ -912,12 +1193,59 @@ const TaskDetailModal = ({ task: initialTask, taskId, onClose, onUpdate, isOpen 
                             <div className="max-w-2xl mx-auto space-y-6">
                                 <div className="flex items-center justify-between border-b border-slate-100 pb-4">
                                     <h4 className="font-bold text-slate-800 italic">Task Assets</h4>
-                                    <label className="btn-primary py-2 px-4 text-xs cursor-pointer">
-                                        <Paperclip className="w-4 h-4" />
-                                        Attach File
-                                        <input type="file" className="hidden" onChange={handleFileUpload} />
-                                    </label>
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={() => setShowLinkForm(!showLinkForm)}
+                                            className="btn-secondary py-2 px-4 text-xs flex items-center gap-2"
+                                        >
+                                            <Link2 className="w-4 h-4" />
+                                            {showLinkForm ? 'Cancel Link' : 'Add Link'}
+                                        </button>
+                                        <label className="btn-primary py-2 px-4 text-xs cursor-pointer flex items-center gap-2">
+                                            <Paperclip className="w-4 h-4" />
+                                            Attach File
+                                            <input type="file" className="hidden" onChange={handleFileUpload} />
+                                        </label>
+                                    </div>
                                 </div>
+
+                                {showLinkForm && (
+                                    <form
+                                        onSubmit={(e) => {
+                                            e.preventDefault();
+                                            if (!linkUrl.trim()) return;
+                                            addLinkAttachment.mutate({ url: linkUrl.trim(), filename: linkName.trim() });
+                                        }}
+                                        className="bg-slate-50 p-6 rounded-2xl border border-slate-100 space-y-4"
+                                    >
+                                        <h5 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Attach a Link</h5>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <input
+                                                type="url"
+                                                required
+                                                placeholder="https://example.com"
+                                                value={linkUrl}
+                                                onChange={(e) => setLinkUrl(e.target.value)}
+                                                className="bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+                                            />
+                                            <input
+                                                type="text"
+                                                placeholder="Link text / description (optional)"
+                                                value={linkName}
+                                                onChange={(e) => setLinkName(e.target.value)}
+                                                className="bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+                                            />
+                                        </div>
+                                        <button
+                                            type="submit"
+                                            disabled={addLinkAttachment.isPending}
+                                            className="btn-primary py-2 px-6 text-xs flex items-center gap-2"
+                                        >
+                                            {addLinkAttachment.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                                            Add Link
+                                        </button>
+                                    </form>
+                                )}
 
                                 {uploadAttachment.isPending && (
                                     <div className="flex items-center gap-3 text-primary text-sm font-bold italic animate-pulse">
@@ -932,44 +1260,101 @@ const TaskDetailModal = ({ task: initialTask, taskId, onClose, onUpdate, isOpen 
                                     </div>
                                 ) : (
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        {attachments.map((file) => (
-                                            <div key={file._id} className="glass-card p-4 border-slate-100 hover:border-primary/30 transition-all group">
-                                                <div className="flex items-start justify-between">
-                                                    <div className="flex items-center gap-3 min-w-0">
-                                                        <div className="p-2 bg-slate-100 rounded-lg text-slate-500">
-                                                            <Paperclip className="w-4 h-4" />
+                                        {attachments.map((file) => {
+                                            const isLink = file.type === 'link';
+                                            const isImage = !isLink && file.mimetype?.startsWith('image/');
+                                            const isVideo = !isLink && file.mimetype?.startsWith('video/');
+                                            const isPdf = !isLink && file.mimetype?.includes('pdf');
+                                            const isArchive = !isLink && (file.mimetype?.includes('zip') || file.mimetype?.includes('tar') || file.mimetype?.includes('rar'));
+
+                                            // Determine correct icon
+                                            let Icon = Paperclip;
+                                            if (isLink) Icon = Link2;
+                                            else if (isImage) Icon = Image;
+                                            else if (isVideo) Icon = Video;
+                                            else if (isPdf) Icon = FileText;
+                                            else if (isArchive) Icon = FileArchive;
+
+                                            return (
+                                                <div key={file._id} className="glass-card p-4 border-slate-100 hover:border-primary/30 transition-all group flex flex-col justify-between">
+                                                    <div>
+                                                        <div className="flex items-start justify-between">
+                                                            <div className="flex items-center gap-3 min-w-0">
+                                                                <div className={cn(
+                                                                    "p-2 rounded-lg text-slate-500",
+                                                                    isLink ? "bg-blue-50 text-blue-600" :
+                                                                    isImage ? "bg-green-50 text-green-600" :
+                                                                    isVideo ? "bg-purple-50 text-purple-600" : "bg-slate-100"
+                                                                )}>
+                                                                    <Icon className="w-4 h-4" />
+                                                                </div>
+                                                                <div className="min-w-0">
+                                                                    <p className="text-xs font-bold text-slate-900 truncate" title={file.originalName}>
+                                                                        {file.originalName}
+                                                                    </p>
+                                                                    <p className="text-[10px] text-slate-400 font-bold uppercase">
+                                                                        {isLink ? 'Link' : `${(file.size / 1024).toFixed(1)} KB`} • {file.uploadedBy?.name || 'User'}
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                            <button
+                                                                onClick={() => deleteAttachment.mutate(file._id)}
+                                                                className="p-1.5 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all shrink-0"
+                                                            >
+                                                                <X className="w-3.5 h-3.5" />
+                                                            </button>
                                                         </div>
-                                                        <div className="min-w-0">
-                                                            <p className="text-xs font-bold text-slate-900 truncate" title={file.originalName}>
-                                                                {file.originalName}
-                                                            </p>
-                                                            <p className="text-[10px] text-slate-400 font-bold uppercase">
-                                                                {(file.size / 1024).toFixed(1)} KB • {file.uploadedBy?.name || 'User'}
-                                                            </p>
-                                                        </div>
+
+                                                        {/* Inline Video Player for video files */}
+                                                        {isVideo && file._id && (
+                                                            <div className="mt-3 rounded-xl overflow-hidden border border-slate-100 bg-black">
+                                                                <video
+                                                                    src={`/api/attachments/download/${file._id}`}
+                                                                    controls
+                                                                    className="w-full max-h-[180px] object-contain"
+                                                                />
+                                                            </div>
+                                                        )}
+
+                                                        {/* Inline Image Preview for image files */}
+                                                        {isImage && file._id && (
+                                                            <div className="mt-3 rounded-xl overflow-hidden border border-slate-100 bg-slate-50">
+                                                                <img
+                                                                    src={`/api/attachments/download/${file._id}`}
+                                                                    alt={file.originalName}
+                                                                    className="w-full max-h-[180px] object-cover"
+                                                                />
+                                                            </div>
+                                                        )}
                                                     </div>
-                                                    <button
-                                                        onClick={() => deleteAttachment.mutate(file._id)}
-                                                        className="p-1.5 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
-                                                    >
-                                                        <X className="w-3.5 h-3.5" />
-                                                    </button>
+
+                                                    <div className="mt-4 flex items-center justify-between pt-3 border-t border-slate-50">
+                                                        {isLink ? (
+                                                            <a
+                                                                href={file.url}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="text-[10px] font-black text-blue-600 uppercase tracking-widest hover:underline flex items-center gap-1"
+                                                            >
+                                                                Open Link <Link2 className="w-3 h-3" />
+                                                            </a>
+                                                        ) : (
+                                                            <a
+                                                                href={`/api/attachments/download/${file._id}`}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="text-[10px] font-black text-primary uppercase tracking-widest hover:underline"
+                                                            >
+                                                                Download
+                                                            </a>
+                                                        )}
+                                                        <span className="text-[10px] text-slate-300 font-bold">
+                                                            {new Date(file.createdAt).toLocaleDateString()}
+                                                        </span>
+                                                    </div>
                                                 </div>
-                                                <div className="mt-4 flex items-center justify-between pt-3 border-t border-slate-50">
-                                                    <a
-                                                        href={`/api/attachments/download/${file._id}`}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="text-[10px] font-black text-primary uppercase tracking-widest hover:underline"
-                                                    >
-                                                        Download
-                                                    </a>
-                                                    <span className="text-[10px] text-slate-300 font-bold">
-                                                        {new Date(file.createdAt).toLocaleDateString()}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                        ))}
+                                            );
+                                        })}
                                     </div>
                                 )}
                             </div>

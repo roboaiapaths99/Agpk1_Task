@@ -4,7 +4,7 @@ import {
     Calendar, ChevronLeft, ChevronRight, Plus, Layers, Folder, Users, Clock,
     Paperclip, X, Loader2, GitMerge, ShieldCheck
 } from 'lucide-react';
-import { projectService, taskService, attachmentService, guestService } from '../services/api/apiServices';
+import { projectService, taskService, attachmentService, guestService, profileService } from '../services/api/apiServices';
 import { cn } from '../lib/utils';
 import {
     format, addDays, addMonths, startOfDay, startOfWeek, startOfMonth,
@@ -13,6 +13,7 @@ import {
 import CreateProjectModal from '../components/Project/CreateProjectModal';
 import TaskDetailModal from '../components/Tasks/TaskDetailModal';
 import { toast } from 'react-hot-toast';
+import { useSearchParams } from 'react-router-dom';
 import PresenceAvatars from '../components/common/PresenceAvatars';
 
 // ─── Helpers (Native fallbacks if needed, but using date-fns now) ────────────────
@@ -39,6 +40,8 @@ const STATUS_BAR = {
 const ProjectTimeline = () => {
     const { useQuery, useMutation, useQueryClient } = ReactQuery;
     const queryClient = useQueryClient();
+    const [searchParams, setSearchParams] = useSearchParams();
+    const projectIdParam = searchParams.get('id');
     const [selectedProject, setSelectedProject] = React.useState(null);
     const [isCreateModalOpen, setIsCreateModalOpen] = React.useState(false);
     const [viewType, setViewType] = React.useState('Week');
@@ -59,6 +62,17 @@ const ProjectTimeline = () => {
     const projects = Array.isArray(projectsRaw?.projects) ? projectsRaw.projects
         : Array.isArray(projectsRaw?.data?.projects) ? projectsRaw.data.projects
             : Array.isArray(projectsRaw) ? projectsRaw : [];
+
+    React.useEffect(() => {
+        if (projectIdParam && projects.length > 0) {
+            const found = projects.find(p => p._id === projectIdParam);
+            if (found) {
+                setSelectedProject(found);
+            }
+        } else if (!projectIdParam && projects.length > 0 && !selectedProject) {
+            setSelectedProject(projects[0]);
+        }
+    }, [projectIdParam, projects, selectedProject]);
 
     const { data: ganttRaw } = useQuery({
         queryKey: ['gantt', selectedProject?._id],
@@ -99,6 +113,57 @@ const ProjectTimeline = () => {
         mutationFn: (id) => attachmentService.remove(id),
         onSuccess: () => queryClient.invalidateQueries({ queryKey: ['project-attachments', selectedProject._id] }),
     });
+
+    const { data: usersRaw } = useQuery({
+        queryKey: ['users'],
+        queryFn: async () => {
+            const res = await profileService.getAllUsers();
+            return res.users || res.data?.users || res.data || [];
+        }
+    });
+    const users = Array.isArray(usersRaw) ? usersRaw : [];
+
+    const addMemberMutation = useMutation({
+        mutationFn: ({ projectId, userId }) => projectService.addMember(projectId, userId),
+        onSuccess: (response) => {
+            queryClient.invalidateQueries({ queryKey: ['projects'] });
+            // Update selected project members in UI state
+            const updatedProject = response.data?.project || response.data?.data?.project || response.project;
+            if (updatedProject) {
+                setSelectedProject(updatedProject);
+            }
+            toast.success('Member added successfully!');
+        },
+        onError: (err) => {
+            toast.error(err.response?.data?.message || err.message);
+        }
+    });
+
+    const removeMemberMutation = useMutation({
+        mutationFn: ({ projectId, userId }) => projectService.removeMember(projectId, userId),
+        onSuccess: (response) => {
+            queryClient.invalidateQueries({ queryKey: ['projects'] });
+            // Update selected project members in UI state
+            const updatedProject = response.data?.project || response.data?.data?.project || response.project;
+            if (updatedProject) {
+                setSelectedProject(updatedProject);
+            }
+            toast.success('Member removed successfully!');
+        },
+        onError: (err) => {
+            toast.error(err.response?.data?.message || err.message);
+        }
+    });
+
+    const handleAddMember = (userId) => {
+        if (!selectedProject) return;
+        addMemberMutation.mutate({ projectId: selectedProject._id, userId });
+    };
+
+    const handleRemoveMember = (userId) => {
+        if (!selectedProject) return;
+        removeMemberMutation.mutate({ projectId: selectedProject._id, userId });
+    };
 
     const handleFileUpload = (e) => {
         const file = e.target.files[0];
@@ -423,6 +488,80 @@ const ProjectTimeline = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Project Members Section */}
+            {selectedProject && (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    {/* Members List */}
+                    <div className="lg:col-span-2 bg-white p-6 rounded-3xl border border-slate-100 space-y-6 shadow-sm">
+                        <div className="flex items-center justify-between border-b border-slate-50 pb-4">
+                            <div className="flex items-center gap-3">
+                                <Users className="w-5 h-5 text-primary" />
+                                <h3 className="font-bold text-slate-800 text-base italic">Project Team</h3>
+                            </div>
+                        </div>
+
+                        {/* Render members */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            {/* Owner */}
+                            <div className="flex items-center gap-3 p-3 rounded-2xl bg-slate-50 border border-slate-100">
+                                <div className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-bold text-sm shrink-0">
+                                    {(selectedProject.owner?.name || 'OW').substring(0, 2).toUpperCase()}
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                    <p className="text-sm font-bold text-slate-900 truncate">{selectedProject.owner?.name || 'Project Owner'}</p>
+                                    <span className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded font-black uppercase tracking-widest">Owner</span>
+                                </div>
+                            </div>
+
+                            {/* Members */}
+                            {selectedProject.members?.filter(m => m._id !== selectedProject.owner?._id).map((member) => (
+                                <div key={member._id} className="flex items-center justify-between p-3 rounded-2xl bg-white border border-slate-100 group shadow-sm hover:border-primary/20 transition-all">
+                                    <div className="flex items-center gap-3 min-w-0">
+                                        <div className="w-10 h-10 rounded-full bg-slate-100 text-slate-600 flex items-center justify-center font-bold text-sm shrink-0">
+                                            {(member.name || 'MB').substring(0, 2).toUpperCase()}
+                                        </div>
+                                        <div className="min-w-0">
+                                            <p className="text-sm font-bold text-slate-900 truncate">{member.name}</p>
+                                            <p className="text-[10px] text-slate-400 truncate">{member.email}</p>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => handleRemoveMember(member._id)}
+                                        className="p-1.5 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all shrink-0"
+                                        title="Remove from project"
+                                    >
+                                        <X className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Add Member Form */}
+                    <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 space-y-4 shadow-sm flex flex-col justify-between">
+                        <div>
+                            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Add Member</h4>
+                            <p className="text-xs text-slate-400 italic mb-4">Grant project access to other organization members.</p>
+                            <select
+                                onChange={(e) => {
+                                    if (e.target.value) {
+                                        handleAddMember(e.target.value);
+                                        e.target.value = '';
+                                    }
+                                }}
+                                className="w-full bg-white border border-slate-200 rounded-xl py-3 px-4 text-xs font-bold outline-none focus:ring-2 focus:ring-primary/20 appearance-none shadow-sm cursor-pointer"
+                            >
+                                <option value="">Select User...</option>
+                                {users.filter(u => u._id !== selectedProject.owner?._id && !selectedProject.members?.some(m => m._id === u._id)).map(user => (
+                                    <option key={user._id} value={user._id}>{user.name} ({user.email})</option>
+                                ))}
+                            </select>
+                        </div>
+                        <p className="text-[10px] text-slate-400 italic font-medium">Only project team members can view tasks, documents, and timelines for this project.</p>
+                    </div>
+                </div>
+            )}
 
             {/* Project Assets Section */}
             {selectedProject && (

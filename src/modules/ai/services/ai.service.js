@@ -108,50 +108,76 @@ Epic Description: ${epic.description || 'No description provided'}`;
     }
 
     async _callLLM(systemPrompt, userPrompt) {
-        const apiKey = process.env.OPENAI_API_KEY;
-        const model = process.env.OPENAI_MODEL || 'gpt-4o-mini';
+        const apiKey = process.env.GEMINI_API_KEY;
+        const model = process.env.GEMINI_MODEL || 'gemini-1.5-flash';
 
         if (!apiKey) {
-            throw new Error("OpenAI API Key is missing in environment configuration.");
+            throw new Error("Gemini API Key is missing in environment configuration.");
         }
 
         try {
-            const response = await fetch('https://api.openai.com/v1/chat/completions', {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+            const requestBody = {
+                contents: [
+                    {
+                        role: 'user',
+                        parts: [
+                            { text: userPrompt }
+                        ]
+                    }
+                ],
+                generationConfig: {
+                    responseMimeType: 'application/json'
+                }
+            };
+
+            if (systemPrompt) {
+                requestBody.systemInstruction = {
+                    parts: [
+                        { text: systemPrompt }
+                    ]
+                };
+            }
+
+            const response = await fetch(url, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${apiKey}`
+                    'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({
-                    model,
-                    messages: [
-                        { role: 'system', content: systemPrompt },
-                        { role: 'user', content: userPrompt }
-                    ],
-                    temperature: 0.7,
-                    response_format: { type: "json_object" }
-                })
+                body: JSON.stringify(requestBody)
             });
 
             if (!response.ok) {
-                const errorData = await response.json();
-                const rawMessage = errorData.error?.message || '';
-
-                if (rawMessage.includes('Incorrect API key') || rawMessage.includes('invalid_api_key')) {
-                    throw new Error('AI Service configuration error. Please contact your administrator.');
-                }
-                if (rawMessage.includes('quota') || rawMessage.includes('rate_limit')) {
-                    throw new Error('AI Service limit reached. Please try again later.');
-                }
-
-                throw new Error(rawMessage || `AI Service currently unavailable: ${response.statusText}`);
+                const errorData = await response.json().catch(() => ({}));
+                const rawMessage = errorData.error?.message || response.statusText || 'Unknown error';
+                throw new Error(`Gemini AI Service currently unavailable: ${rawMessage}`);
             }
 
             const data = await response.json();
-            const content = data.choices[0].message.content;
-            return JSON.parse(content);
+            if (!data.candidates || !data.candidates[0] || !data.candidates[0].content || !data.candidates[0].content.parts || !data.candidates[0].content.parts[0]) {
+                throw new Error("Empty response received from Gemini AI model.");
+            }
+
+            let text = data.candidates[0].content.parts[0].text;
+            if (!text) {
+                throw new Error("No text content returned from Gemini model.");
+            }
+
+            // Clean markdown code blocks if present
+            text = text.trim();
+            if (text.startsWith('```json')) {
+                text = text.substring(7);
+            } else if (text.startsWith('```')) {
+                text = text.substring(3);
+            }
+            if (text.endsWith('```')) {
+                text = text.substring(0, text.length - 3);
+            }
+            text = text.trim();
+
+            return JSON.parse(text);
         } catch (error) {
-            console.error("LLM Call Failed:", error);
+            console.error("Gemini LLM Call Failed:", error);
             throw error;
         }
     }

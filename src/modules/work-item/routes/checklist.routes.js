@@ -10,6 +10,7 @@ router.post('/:id/checklists', validate(addChecklistSchema), checklistController
 router.get('/:id/checklists', checklistController.getChecklists);
 router.patch('/checklists/:checklistId/items/:itemId', validate(updateChecklistItemSchema), checklistController.updateChecklistItem);
 router.post('/checklists/:checklistId/items', validate(addItemToChecklistSchema), checklistController.addItemToChecklist);
+router.delete('/checklists/:checklistId/items/:itemId', checklistController.deleteChecklistItem);
 router.delete('/checklists/:checklistId', checklistController.deleteChecklist);
 
 

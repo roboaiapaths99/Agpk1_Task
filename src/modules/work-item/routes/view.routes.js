@@ -13,6 +13,7 @@ router.get('/workload', viewController.workload);
 
 router.post('/', viewController.saveView);
 router.get('/', viewController.getSavedViews);
+router.patch('/:id', viewController.updateSavedView);
 router.delete('/:id', viewController.deleteSavedView);
 
 module.exports = router;

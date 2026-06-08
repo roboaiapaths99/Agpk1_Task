@@ -7,6 +7,7 @@ import { useQuery } from '@tanstack/react-query';
 import { notificationService, commonService } from '../services/api/apiServices';
 import { cn } from '../lib/utils';
 import PresenceAvatars from './common/PresenceAvatars';
+import TaskDetailModal from './Tasks/TaskDetailModal';
 
 const Topbar = () => {
     const { user, organization, logout } = useAuthStore();
@@ -15,6 +16,7 @@ const Topbar = () => {
     const [showNotifications, setShowNotifications] = React.useState(false);
     const [search, setSearch] = React.useState('');
     const [showSearch, setShowSearch] = React.useState(false);
+    const [selectedTaskId, setSelectedTaskId] = React.useState(null);
 
     const { data: unreadData } = useQuery({
         queryKey: ['unread-count'],
@@ -56,7 +58,7 @@ const Topbar = () => {
                                     {results.tasks.map(t => (
                                         <button
                                             key={t._id}
-                                            onClick={() => { navigate('/tasks'); setShowSearch(false); setSearch(''); }}
+                                            onClick={() => { setSelectedTaskId(t._id); setShowSearch(false); setSearch(''); }}
                                             className="w-full h-12 px-3 flex items-center gap-3 hover:bg-slate-50 rounded-xl transition-colors text-left"
                                         >
                                             <div className="w-2 h-2 rounded-full bg-primary" />
@@ -74,7 +76,7 @@ const Topbar = () => {
                                     {results.projects.map(p => (
                                         <button
                                             key={p._id}
-                                            onClick={() => { navigate('/projects'); setShowSearch(false); setSearch(''); }}
+                                            onClick={() => { navigate(`/projects?id=${p._id}`); setShowSearch(false); setSearch(''); }}
                                             className="w-full h-12 px-3 flex items-center gap-3 hover:bg-slate-50 rounded-xl transition-colors text-left"
                                         >
                                             <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -168,6 +170,13 @@ const Topbar = () => {
                     )}
                 </div>
             </div>
+            {selectedTaskId && (
+                <TaskDetailModal
+                    taskId={selectedTaskId}
+                    isOpen={!!selectedTaskId}
+                    onClose={() => setSelectedTaskId(null)}
+                />
+            )}
         </header>
     );
 };

@@ -27,8 +27,8 @@ class AttachmentService {
             throw new Error('Unauthorized');
         }
 
-        // Delete file from disk
-        if (fs.existsSync(attachment.path)) {
+        // Delete file from disk if it's a file
+        if (attachment.type === 'file' && attachment.path && fs.existsSync(attachment.path)) {
             try {
                 fs.unlinkSync(attachment.path);
             } catch (err) {

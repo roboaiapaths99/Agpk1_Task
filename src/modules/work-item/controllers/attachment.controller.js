@@ -52,6 +52,28 @@ class AttachmentController {
         }
     }
 
+    async addLink(req, res, next) {
+        try {
+            const { taskId, projectId, url, filename } = req.body;
+            if (!url) throw new Error('URL is required');
+
+            const attachment = await svc.createAttachment({
+                taskId,
+                projectId,
+                organizationId: req.user.organizationId,
+                type: 'link',
+                url,
+                filename: filename || url,
+                originalName: filename || url,
+                uploadedBy: req.user.id
+            });
+
+            return success(res, { attachment });
+        } catch (e) {
+            next(e);
+        }
+    }
+
     async delete(req, res, next) {
         try {
             await svc.deleteAttachment(req.params.id, req.user.organizationId, req.user.id);

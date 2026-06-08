@@ -108,11 +108,11 @@ app.use(cors(corsOptions));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// HTTP Parameter Pollution protection (temporarily disabled due to Express 5 getter conflicts)
-// app.use(hpp());
+// HTTP Parameter Pollution protection
+app.use(hpp());
 
-// Data Sanitization against NoSQL Injection (temporarily disabled due to Express 5 getter conflicts)
-// app.use(mongoSanitize());
+// Data Sanitization against NoSQL Injection
+app.use(mongoSanitize());
 
 // Data Sanitization against XSS
 app.use(xssSanitizer);

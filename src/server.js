@@ -50,8 +50,12 @@ const startServer = async () => {
         jobScheduler.init();
 
         // 8. Start Email Worker (BullMQ)
-        const initializeEmailWorker = require('./workers/email.worker');
-        initializeEmailWorker();
+        try {
+            const initializeEmailWorker = require('./workers/email.worker');
+            initializeEmailWorker();
+        } catch (workerError) {
+            logger.error('Failed to initialize email worker:', workerError);
+        }
 
         // Graceful shutdown
         const shutdown = async (signal) => {

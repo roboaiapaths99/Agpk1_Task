@@ -2,7 +2,8 @@ import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
     Plus, MoreHorizontal, Calendar, MessageSquare, CheckSquare,
-    Search, Filter, LayoutGrid, List, GripVertical
+    Search, Filter, LayoutGrid, List, GripVertical,
+    Bookmark, Bug, Zap, ChevronsUp, ChevronUp, Minus, ChevronDown
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { taskService } from '../services/api/apiServices';
@@ -13,6 +14,14 @@ import PresenceAvatars from '../components/common/PresenceAvatars';
 import { useSocket } from '../hooks/useSocket';
 import useAuthStore from '../store/useAuth';
 
+// ─── Issue Type Icons Mapping ───────────────────────────────
+const ISSUE_TYPE_ICONS = {
+    story: { icon: Bookmark, color: 'text-emerald-500' },
+    task: { icon: CheckSquare, color: 'text-blue-500' },
+    bug: { icon: Bug, color: 'text-rose-500' },
+    epic: { icon: Zap, color: 'text-purple-500' },
+};
+
 // ─── Priority Badge ─────────────────────────────────────────
 const PriorityBadge = ({ priority }) => {
     const colors = {
@@ -21,69 +30,77 @@ const PriorityBadge = ({ priority }) => {
         high: 'bg-orange-100 text-orange-600',
         critical: 'bg-red-100 text-red-600',
     };
+    const icons = {
+        low: <ChevronDown className="w-3 h-3 text-emerald-500 shrink-0" />,
+        medium: <Minus className="w-3 h-3 text-blue-500 shrink-0" />,
+        high: <ChevronUp className="w-3 h-3 text-orange-500 shrink-0" />,
+        critical: <ChevronsUp className="w-3 h-3 text-red-500 shrink-0" />,
+    };
     return (
-        <span className={cn("text-[10px] font-bold uppercase px-2 py-0.5 rounded-full", colors[priority] || colors.low)}>
+        <span className={cn("text-[10px] font-bold uppercase px-2 py-0.5 rounded-full flex items-center gap-1 shrink-0", colors[priority] || colors.low)}>
+            {icons[priority]}
             {priority}
         </span>
     );
 };
 
 // ─── Task Card ──────────────────────────────────────────────
-const TaskCard = ({ task, onClick }) => (
-    <div
-        onClick={() => onClick(task)}
-        className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all cursor-pointer group"
-    >
-        <div className="flex justify-between items-start mb-3">
-            <div className="flex items-center gap-2">
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter group-hover:text-primary transition-colors">
-                    {task.key || `T-${task._id?.slice(-3)}`}
-                </span>
-                <PriorityBadge priority={task.priority} />
-            </div>
-            <button className="text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
-                <MoreHorizontal className="w-4 h-4" />
-            </button>
-        </div>
-        <h4 className="font-bold text-slate-800 text-sm leading-snug">{task.title}</h4>
-
-        {task.description && (
-            <p className="text-xs text-slate-400 mt-1.5 line-clamp-2">{task.description}</p>
-        )}
-
-        <div className="flex items-center gap-4 mt-4 text-slate-400">
-            <div className="flex items-center gap-1.5">
-                <div className="w-4 h-4 rounded bg-slate-100 flex items-center justify-center text-[8px] font-black text-slate-400 uppercase">
-                    {task.issueType?.[0] || 'T'}
-                </div>
-                {task.storyPoints && (
-                    <span className="w-4 h-4 rounded-full bg-slate-200 flex items-center justify-center text-[8px] font-black text-slate-700">
-                        {task.storyPoints}
+const TaskCard = ({ task, onClick }) => {
+    const type = ISSUE_TYPE_ICONS[task.issueType?.toLowerCase()] || ISSUE_TYPE_ICONS.task;
+    return (
+        <div
+            onClick={() => onClick(task)}
+            className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-all cursor-pointer group"
+        >
+            <div className="flex justify-between items-start mb-3">
+                <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-tighter group-hover:text-primary transition-colors">
+                        {task.key || `T-${task._id?.slice(-3)}`}
                     </span>
-                )}
-            </div>
-            {task.dueDate && (
-                <div className="flex items-center gap-1 text-[11px] font-medium">
-                    <Calendar className="w-3 h-3" />
-                    <span>{new Date(task.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+                    <PriorityBadge priority={task.priority} />
                 </div>
-            )}
-        </div>
+                <button className="text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+                    <MoreHorizontal className="w-4 h-4" />
+                </button>
+            </div>
+            <h4 className="font-bold text-slate-800 text-sm leading-snug">{task.title}</h4>
 
-        <div className="flex items-center justify-between mt-4">
-            <div className="flex -space-x-2">
-                {task.assignee ? (
-                    <div className="w-6 h-6 rounded-full bg-primary border-2 border-white flex items-center justify-center text-[10px] text-white font-bold">
-                        {(task.assignee?.name || task.assignee?.email || '?').substring(0, 2).toUpperCase()}
+            {task.description && (
+                <p className="text-xs text-slate-400 mt-1.5 line-clamp-2">{task.description}</p>
+            )}
+
+            <div className="flex items-center gap-4 mt-4 text-slate-400">
+                <div className="flex items-center gap-1.5">
+                    <type.icon className={cn("w-4 h-4", type.color)} />
+                    {task.storyPoints && (
+                        <span className="w-4 h-4 rounded-full bg-slate-200 flex items-center justify-center text-[8px] font-black text-slate-700">
+                            {task.storyPoints}
+                        </span>
+                    )}
+                </div>
+                {task.dueDate && (
+                    <div className="flex items-center gap-1 text-[11px] font-medium">
+                        <Calendar className="w-3 h-3" />
+                        <span>{new Date(task.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
                     </div>
-                ) : (
-                    <div className="w-6 h-6 rounded-full bg-slate-200 border-2 border-white flex items-center justify-center text-[10px] text-slate-400 font-bold">?</div>
                 )}
             </div>
-            <div className="text-[10px] text-slate-400 font-medium">#{task._id?.slice(-5)}</div>
+
+            <div className="flex items-center justify-between mt-4">
+                <div className="flex -space-x-2">
+                    {task.assignee ? (
+                        <div className="w-6 h-6 rounded-full bg-primary border-2 border-white flex items-center justify-center text-[10px] text-white font-bold">
+                            {(task.assignee?.name || task.assignee?.email || '?').substring(0, 2).toUpperCase()}
+                        </div>
+                    ) : (
+                        <div className="w-6 h-6 rounded-full bg-slate-200 border-2 border-white flex items-center justify-center text-[10px] text-slate-400 font-bold">?</div>
+                    )}
+                </div>
+                <div className="text-[10px] text-slate-400 font-medium">#{task._id?.slice(-5)}</div>
+            </div>
         </div>
-    </div>
-);
+    );
+};
 
 // ─── Kanban Column ──────────────────────────────────────────
 const KanbanColumn = ({ title, tasks, status, onTaskClick, onStatusChange, wipLimit }) => {
@@ -144,35 +161,39 @@ const KanbanColumn = ({ title, tasks, status, onTaskClick, onStatusChange, wipLi
 };
 
 // ─── List Row ───────────────────────────────────────────────
-const TaskListRow = ({ task, onClick }) => (
-    <div
-        onClick={() => onClick(task)}
-        className="flex items-center gap-4 p-4 hover:bg-slate-50 rounded-xl transition-colors cursor-pointer group border-b border-slate-100 last:border-0"
-    >
-        <div className={cn(
-            "w-2 h-8 rounded-full",
-            task.status === 'completed' ? 'bg-green-500' :
-                task.status === 'in_progress' ? 'bg-blue-500' :
-                    task.status === 'in_review' ? 'bg-purple-500' : 'bg-slate-300'
-        )} />
-        <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-                <span className="text-[10px] font-black text-slate-400 uppercase">{task.key || `T-001`}</span>
-                <p className="text-sm font-bold text-slate-800 truncate group-hover:text-primary transition-colors">{task.title}</p>
+const TaskListRow = ({ task, onClick }) => {
+    const type = ISSUE_TYPE_ICONS[task.issueType?.toLowerCase()] || ISSUE_TYPE_ICONS.task;
+    return (
+        <div
+            onClick={() => onClick(task)}
+            className="flex items-center gap-4 p-4 hover:bg-slate-50 rounded-xl transition-colors cursor-pointer group border-b border-slate-100 last:border-0"
+        >
+            <div className={cn(
+                "w-2 h-8 rounded-full",
+                task.status === 'completed' ? 'bg-green-500' :
+                    task.status === 'in_progress' ? 'bg-blue-500' :
+                        task.status === 'in_review' ? 'bg-purple-500' : 'bg-slate-300'
+            )} />
+            <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                    <type.icon className={cn("w-3.5 h-3.5 shrink-0", type.color)} />
+                    <span className="text-[10px] font-black text-slate-400 uppercase">{task.key || `T-001`}</span>
+                    <p className="text-sm font-bold text-slate-800 truncate group-hover:text-primary transition-colors">{task.title}</p>
+                </div>
+                <p className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">{task.status?.replace(/_/g, ' ')}</p>
             </div>
-            <p className="text-[10px] text-slate-400 uppercase tracking-widest font-bold">{task.status?.replace(/_/g, ' ')}</p>
+            <PriorityBadge priority={task.priority} />
+            {task.dueDate && (
+                <span className="text-xs text-slate-400 font-medium">
+                    {new Date(task.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                </span>
+            )}
+            <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-[10px] text-primary font-bold">
+                {(task.assignee?.name || '?').substring(0, 2).toUpperCase()}
+            </div>
         </div>
-        <PriorityBadge priority={task.priority} />
-        {task.dueDate && (
-            <span className="text-xs text-slate-400 font-medium">
-                {new Date(task.dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-            </span>
-        )}
-        <div className="w-7 h-7 rounded-full bg-primary/10 flex items-center justify-center text-[10px] text-primary font-bold">
-            {(task.assignee?.name || '?').substring(0, 2).toUpperCase()}
-        </div>
-    </div>
-);
+    );
+};
 
 // ─── Main Board ─────────────────────────────────────────────
 const TaskBoard = () => {

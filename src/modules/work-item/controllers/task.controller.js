@@ -14,21 +14,21 @@ class TaskController {
 
     async getAll(req, res, next) {
         try {
-            const result = await taskService.getTasks(req.user.organizationId, req.query);
+            const result = await taskService.getTasks(req.user.organizationId, req.query, req.user.id, req.user.role);
             return res.json({ success: true, ...result });
         } catch (error) { next(error); }
     }
 
     async getById(req, res, next) {
         try {
-            const task = await taskService.getTaskById(req.params.id, req.user.organizationId);
+            const task = await taskService.getTaskById(req.params.id, req.user.organizationId, req.user.id, req.user.role);
             return success(res, { task });
         } catch (error) { next(error); }
     }
 
     async update(req, res, next) {
         try {
-            const task = await taskService.updateTask(req.params.id, req.user.organizationId, req.body, req.user.id);
+            const task = await taskService.updateTask(req.params.id, req.user.organizationId, req.body, req.user.id, req.user.role);
             await cacheService.delByPattern(`cache:${req.user.organizationId}:`);
             return success(res, { task }, 'Task updated');
         } catch (error) { next(error); }

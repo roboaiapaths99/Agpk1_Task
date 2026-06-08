@@ -1,12 +1,19 @@
 const { Project, Milestone, Dependency } = require('../models/Project');
 const Task = require('../../work-item/models/Task');
-const { NotFoundError } = require('../../../core/errors');
+const { NotFoundError, UnauthorizedError } = require('../../../core/errors');
 const eventBus = require('../../../core/eventBus');
 const { EVENTS } = require('../../../utils/constants');
 
 class ProjectService {
     async create(data, userId, organizationId) {
-        const project = await Project.create({ ...data, owner: userId, organizationId });
+        const selectedMembers = Array.isArray(data.members) ? data.members : [];
+        const uniqueMembers = Array.from(new Set([userId, ...selectedMembers]));
+        const project = await Project.create({ 
+            ...data, 
+            owner: userId, 
+            members: uniqueMembers, 
+            organizationId 
+        });
         await eventBus.publish(EVENTS.PROJECT_CREATED, {
             projectId: project._id,
             organizationId,
@@ -16,15 +23,30 @@ class ProjectService {
         return project;
     }
 
-    async getAll(organizationId, query = {}) {
+    async getAll(organizationId, userId, userRole, query = {}) {
         const f = { organizationId };
         if (query.status) f.status = query.status;
+        
+        // Scope projects to members or owner only (Admins can see all projects in organization)
+        if (userRole !== 'admin') {
+            f.$or = [
+                { owner: userId },
+                { members: userId }
+            ];
+        }
+        
         return Project.find(f).populate('owner', 'name email').populate('members', 'name email');
     }
 
-    async getById(id, organizationId) {
+    async getById(id, organizationId, userId, userRole) {
         const p = await Project.findOne({ _id: id, organizationId }).populate('owner', 'name').populate('members', 'name email');
         if (!p) throw new NotFoundError('Project');
+        
+        // Access control: only project members, owner or admin can view details
+        if (userRole !== 'admin' && p.owner.toString() !== userId.toString() && !p.members.some(m => m._id.toString() === userId.toString())) {
+            throw new UnauthorizedError('Access denied: You are not a member of this project');
+        }
+        
         return p;
     }
 
@@ -42,6 +64,32 @@ class ProjectService {
             Dependency.deleteMany({ projectId: id, organizationId })
         ]);
         return p;
+    }
+
+    async addMember(projectId, userId, organizationId) {
+        const p = await Project.findOne({ _id: projectId, organizationId });
+        if (!p) throw new NotFoundError('Project');
+        
+        if (!p.members.some(m => m.toString() === userId.toString())) {
+            p.members.push(userId);
+            await p.save();
+        }
+        return p.populate('owner', 'name').populate('members', 'name email');
+    }
+
+    async removeMember(projectId, userId, organizationId) {
+        const p = await Project.findOne({ _id: projectId, organizationId });
+        if (!p) throw new NotFoundError('Project');
+        
+        p.members = p.members.filter(m => m.toString() !== userId.toString());
+        await p.save();
+        return p.populate('owner', 'name').populate('members', 'name email');
+    }
+
+    async getMembers(projectId, organizationId) {
+        const p = await Project.findOne({ _id: projectId, organizationId }).populate('members', 'name email');
+        if (!p) throw new NotFoundError('Project');
+        return p.members;
     }
 
     // ======================== MILESTONES ========================

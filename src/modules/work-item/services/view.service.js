@@ -94,6 +94,17 @@ class ViewService {
         return SavedView.findOneAndDelete({ _id: viewId, organizationId, userId });
     }
 
+    async updateSavedView(viewId, organizationId, userId, data) {
+        const { NotFoundError } = require('../../../core/errors');
+        const view = await SavedView.findOneAndUpdate(
+            { _id: viewId, organizationId, userId },
+            { $set: data },
+            { new: true, runValidators: true }
+        );
+        if (!view) throw new NotFoundError('Saved view');
+        return view;
+    }
+
     _buildMatch(organizationId, filters = {}) {
         const orgId = new mongoose.Types.ObjectId(organizationId);
         const match = { organizationId: orgId, isArchived: false };

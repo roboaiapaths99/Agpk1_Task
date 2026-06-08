@@ -3,7 +3,13 @@
  * @param {any} input 
  * @returns {any}
  */
-const sanitize = (input) => {
+const sanitize = (input, keyName = null) => {
+    // Skip sanitizing password and token fields
+    const skipKeys = ['password', 'confirmPassword', 'token', 'refreshToken', 'accessToken', 'passwordResetToken', 'emailVerificationToken'];
+    if (keyName && skipKeys.some(skipKey => keyName.toLowerCase().includes(skipKey))) {
+        return input;
+    }
+
     if (typeof input === 'string') {
         return input
             .replace(/&/g, '&amp;')
@@ -11,19 +17,17 @@ const sanitize = (input) => {
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#x27;')
-            .replace(/\//g, '&#x2F;')
-            .replace(/`/g, '&#96;')
-            .replace(/=/g, '&#61;');
+            .replace(/`/g, '&#96;');
     }
 
     if (Array.isArray(input)) {
-        return input.map(item => sanitize(item));
+        return input.map(item => sanitize(item, keyName));
     }
 
     if (typeof input === 'object' && input !== null) {
         const sanitizedObj = {};
         for (const [key, value] of Object.entries(input)) {
-            sanitizedObj[key] = sanitize(value);
+            sanitizedObj[key] = sanitize(value, key);
         }
         return sanitizedObj;
     }

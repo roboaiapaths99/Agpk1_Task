@@ -44,6 +44,21 @@ const CreateTaskModal = ({ isOpen, onClose }) => {
         : Array.isArray(projectsRaw?.data?.projects) ? projectsRaw.data.projects
             : Array.isArray(projectsRaw?.data) ? projectsRaw.data : [];
 
+    const selectedProjectObj = projects.find(p => p._id === form.project);
+    const filteredUsers = selectedProjectObj
+        ? users.filter(u => {
+            const isMember = selectedProjectObj.members?.some(m => {
+                const memberId = typeof m === 'object' && m !== null ? m._id : m;
+                return memberId?.toString() === u._id?.toString();
+            });
+            const ownerId = typeof selectedProjectObj.owner === 'object' && selectedProjectObj.owner !== null
+                ? selectedProjectObj.owner._id
+                : selectedProjectObj.owner;
+            const isOwner = ownerId?.toString() === u._id?.toString();
+            return isMember || isOwner;
+        })
+        : users;
+
     const createMutation = useMutation({
         mutationFn: (data) => taskService.create(data),
         onSuccess: () => {
@@ -197,8 +212,7 @@ const CreateTaskModal = ({ isOpen, onClose }) => {
                                 className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-4 text-sm font-medium focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all"
                             >
                                 <option value="">Unassigned</option>
-                                <option value="">Unassigned</option>
-                                {users.map(u => <option key={u._id} value={u._id}>{u.name}</option>)}
+                                {filteredUsers.map(u => <option key={u._id} value={u._id}>{u.name}</option>)}
                             </select>
                         </div>
 
@@ -209,7 +223,25 @@ const CreateTaskModal = ({ isOpen, onClose }) => {
                             </label>
                             <select
                                 value={form.project}
-                                onChange={(e) => setForm({ ...form, project: e.target.value })}
+                                onChange={(e) => {
+                                    const projId = e.target.value;
+                                    setForm(prev => {
+                                        let newAssignee = prev.assignee;
+                                        if (projId) {
+                                            const selectedProjectObj = projects.find(p => p._id === projId);
+                                            if (selectedProjectObj) {
+                                                const isMember = selectedProjectObj.members?.some(m => {
+                                                    const memberId = typeof m === 'object' && m !== null ? m._id : m;
+                                                    return memberId?.toString() === prev.assignee;
+                                                }) || (typeof selectedProjectObj.owner === 'object' ? selectedProjectObj.owner?._id : selectedProjectObj.owner)?.toString() === prev.assignee;
+                                                if (!isMember) {
+                                                    newAssignee = '';
+                                                }
+                                            }
+                                        }
+                                        return { ...prev, project: projId, assignee: newAssignee };
+                                    });
+                                }}
                                 className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-4 text-sm font-medium focus:ring-4 focus:ring-primary/10 focus:border-primary outline-none transition-all"
                             >
                                 <option value="">No Project</option>

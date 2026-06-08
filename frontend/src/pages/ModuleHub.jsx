@@ -76,6 +76,46 @@ const modules = [
         link: '/finance',
         status: 'Active',
         stats: 'Audit: Secured'
+    },
+    {
+        id: 'inventory',
+        name: 'Inventory System',
+        description: 'Real-time stock management, procurement, and warehouse tracking.',
+        icon: Package,
+        color: 'bg-amber-500',
+        link: '/inventory',
+        status: 'Active',
+        stats: 'Sub-Module'
+    },
+    {
+        id: 'crm',
+        name: 'CRM System',
+        description: 'Client relationship management, pipelines, and contact logs.',
+        icon: Briefcase,
+        color: 'bg-rose-500',
+        link: '/crm',
+        status: 'Active',
+        stats: 'Sub-Module'
+    },
+    {
+        id: 'attendance',
+        name: 'Attendance Pulse',
+        description: 'Office attendance tracking, timesheets, and monitoring desk.',
+        icon: Camera,
+        color: 'bg-teal-500',
+        link: '/attendance',
+        status: 'Active',
+        stats: 'Sub-Module'
+    },
+    {
+        id: 'hrms',
+        name: 'HRMS Portal',
+        description: 'Human resource management system, documents, and benefits.',
+        icon: Users,
+        color: 'bg-indigo-600',
+        link: '/hrms',
+        status: 'Active',
+        stats: 'Sub-Module'
     }
 ];
 

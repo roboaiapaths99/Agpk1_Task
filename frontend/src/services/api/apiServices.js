@@ -1,4 +1,6 @@
 import api from './axios';
+import { handleApiError } from '../../utils/errorHandler';
+import { safeGet, validateResponse } from '../../utils/apiValidator';
 
 // ─── Project Service ────────────────────────────────────────
 export const projectService = {
@@ -12,6 +14,9 @@ export const projectService = {
     addDependency: (id, data) => api.post(`/projects/${id}/dependencies`, data),
     getDependencies: (id) => api.get(`/projects/${id}/dependencies`),
     getGantt: (id) => api.get(`/projects/${id}/gantt`),
+    addMember: (id, userId) => api.post(`/projects/${id}/members`, { userId }),
+    removeMember: (id, userId) => api.delete(`/projects/${id}/members/${userId}`),
+    getMembers: (id) => api.get(`/projects/${id}/members`),
 };
 
 // ─── Sprint Service ─────────────────────────────────────────
@@ -192,6 +197,7 @@ export const attachmentService = {
     upload: (formData) => api.post('/attachments/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
     }),
+    addLink: (taskId, url, filename) => api.post('/attachments/link', { taskId, url, filename }),
     getByTask: (taskId) => api.get(`/attachments/task/${taskId}`),
     getByProject: (projectId) => api.get(`/attachments/project/${projectId}`),
     remove: (id) => api.delete(`/attachments/${id}`),
@@ -220,8 +226,11 @@ export const taskService = {
     // Checklists
     getChecklists: (id) => api.get(`/tasks/${id}/checklists`),
     addChecklist: (id, data) => api.post(`/tasks/${id}/checklists`, data),
+    deleteChecklist: (checklistId) => api.delete(`/tasks/checklists/${checklistId}`),
     addChecklistItem: (checklistId, data) => api.post(`/tasks/checklists/${checklistId}/items`, data),
-    toggleChecklistItem: (checklistId, itemId) => api.patch(`/tasks/checklists/${checklistId}/items/${itemId}`),
+    toggleChecklistItem: (checklistId, itemId, data) => api.patch(`/tasks/checklists/${checklistId}/items/${itemId}`, data),
+    updateChecklistItem: (checklistId, itemId, data) => api.patch(`/tasks/checklists/${checklistId}/items/${itemId}`, data),
+    deleteChecklistItem: (checklistId, itemId) => api.delete(`/tasks/checklists/${checklistId}/items/${itemId}`),
 
     getSubTasks: (id) => api.get(`/tasks/${id}/subtasks`),
     createSubTask: (id, data) => api.post('/tasks', { ...data, parent: id }),

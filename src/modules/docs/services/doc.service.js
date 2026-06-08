@@ -89,10 +89,23 @@ class DocService {
         return doc;
     }
 
-    async getAll({ organizationId, projectId, parentDocId, search, isTemplate }) {
+    async getAll({ organizationId, projectId, parentDocId, search, isTemplate }, userId, userRole) {
         const filter = { organizationId, isArchived: false };
 
-        if (projectId) filter.projectId = new mongoose.Types.ObjectId(projectId);
+        if (projectId) {
+            filter.projectId = new mongoose.Types.ObjectId(projectId);
+            const hasAccess = await this._checkProjectMembership(projectId, userId, userRole, organizationId);
+            if (!hasAccess) {
+                return []; // No access to this project's docs
+            }
+        } else if (userRole !== 'admin') {
+            const accessibleProjectIds = await this._getAccessibleProjectIds(organizationId, userId, userRole);
+            filter.$or = [
+                { projectId: null },
+                { projectId: { $in: accessibleProjectIds } }
+            ];
+        }
+
         if (parentDocId !== undefined) {
             filter.parentDocId = parentDocId ? new mongoose.Types.ObjectId(parentDocId) : null;
         }
@@ -108,7 +121,7 @@ class DocService {
         return docs;
     }
 
-    async getById(docId, organizationId) {
+    async getById(docId, organizationId, userId, userRole) {
         const doc = await Document.findOne({ _id: docId, organizationId })
             .populate('createdBy', 'name email avatar')
             .populate('lastEditedBy', 'name email avatar')
@@ -123,6 +136,15 @@ class DocService {
             const error = new Error('Document not found');
             error.statusCode = 404;
             throw error;
+        }
+
+        if (doc.projectId && userRole !== 'admin') {
+            const hasAccess = await this._checkProjectMembership(doc.projectId, userId, userRole, organizationId);
+            if (!hasAccess) {
+                const error = new Error('Access denied: You are not a member of this project');
+                error.statusCode = 403;
+                throw error;
+            }
         }
 
         return doc;
@@ -188,6 +210,12 @@ class DocService {
         return { success: true };
     }
 
+    async getVersions(docId, organizationId) {
+        return DocumentVersion.find({ documentId: docId, organizationId })
+            .populate('createdBy', 'name email')
+            .sort({ version: -1 });
+    }
+
     async linkTask(docId, taskId, organizationId) {
         // Verify both doc and task belong to the same org
         const [doc, task] = await Promise.all([
@@ -235,14 +263,29 @@ class DocService {
         return [...builtIn, ...userTemplates];
     }
 
-    async getDocTree(organizationId, projectId) {
+    async getDocTree(organizationId, projectId, userId, userRole) {
+        if (projectId) {
+            const hasAccess = await this._checkProjectMembership(projectId, userId, userRole, organizationId);
+            if (!hasAccess) return [];
+        }
+
         // Build a nested tree of documents for the sidebar
-        const docs = await Document.find({
+        const filter = {
             organizationId,
             projectId: projectId ? new mongoose.Types.ObjectId(projectId) : null,
             isArchived: false,
-        })
-            .select('title icon parentDocId sortOrder updatedAt')
+        };
+
+        if (!projectId && userRole !== 'admin') {
+            const accessibleProjectIds = await this._getAccessibleProjectIds(organizationId, userId, userRole);
+            filter.$or = [
+                { projectId: null },
+                { projectId: { $in: accessibleProjectIds } }
+            ];
+        }
+
+        const docs = await Document.find(filter)
+            .select('title icon parentDocId sortOrder updatedAt projectId')
             .sort({ sortOrder: 1, updatedAt: -1 })
             .lean();
 
@@ -262,6 +305,28 @@ class DocService {
         });
 
         return roots;
+    }
+
+    async _checkProjectMembership(projectId, userId, userRole, organizationId) {
+        if (userRole === 'admin') return true;
+        const { Project } = require('../../project/models/Project');
+        const project = await Project.findOne({ _id: projectId, organizationId });
+        if (!project) return false;
+        return project.owner.toString() === userId.toString() || 
+               project.members.some(m => m.toString() === userId.toString());
+    }
+
+    async _getAccessibleProjectIds(organizationId, userId, userRole) {
+        if (userRole === 'admin') return null;
+        const { Project } = require('../../project/models/Project');
+        const projects = await Project.find({
+            organizationId,
+            $or: [
+                { owner: userId },
+                { members: userId }
+            ]
+        }).select('_id');
+        return projects.map(p => p._id);
     }
 }
 
