@@ -2,7 +2,7 @@ const Task = require('../models/Task');
 const Comment = require('../models/Comment');
 const Checklist = require('../models/Checklist');
 const Attachment = require('../models/Attachment');
-const { NotFoundError, UnauthorizedError } = require('../../../core/errors');
+const { NotFoundError, UnauthorizedError, ForbiddenError } = require('../../../core/errors');
 const eventBus = require('../../../core/eventBus');
 const { EVENTS } = require('../../../utils/constants');
 const { paginate, paginationMeta } = require('../../../utils/pagination');
@@ -121,10 +121,11 @@ class TaskService {
 
         if (task.project && userRole !== 'admin') {
             const project = task.project;
-            const isMember = project.owner.toString() === userId.toString() || 
-                             project.members.some(m => m.toString() === userId.toString());
+            const ownerId = project.owner?._id || project.owner;
+            const isMember = ownerId.toString() === userId.toString() || 
+                             project.members.some(m => (m?._id || m).toString() === userId.toString());
             if (!isMember) {
-                throw new UnauthorizedError('Access denied: You are not a member of this project');
+                throw new ForbiddenError('Access denied: You are not a member of this project');
             }
         }
         return task;

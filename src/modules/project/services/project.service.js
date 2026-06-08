@@ -1,6 +1,6 @@
 const { Project, Milestone, Dependency } = require('../models/Project');
 const Task = require('../../work-item/models/Task');
-const { NotFoundError, UnauthorizedError } = require('../../../core/errors');
+const { NotFoundError, ForbiddenError } = require('../../../core/errors');
 const eventBus = require('../../../core/eventBus');
 const { EVENTS } = require('../../../utils/constants');
 
@@ -43,8 +43,12 @@ class ProjectService {
         if (!p) throw new NotFoundError('Project');
         
         // Access control: only project members, owner or admin can view details
-        if (userRole !== 'admin' && p.owner.toString() !== userId.toString() && !p.members.some(m => m._id.toString() === userId.toString())) {
-            throw new UnauthorizedError('Access denied: You are not a member of this project');
+        const ownerId = p.owner?._id || p.owner;
+        const isMember = ownerId.toString() === userId.toString() || 
+                         p.members.some(m => (m?._id || m).toString() === userId.toString());
+                         
+        if (userRole !== 'admin' && !isMember) {
+            throw new ForbiddenError('Access denied: You are not a member of this project');
         }
         
         return p;

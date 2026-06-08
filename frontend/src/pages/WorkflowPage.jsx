@@ -16,9 +16,19 @@ import ReactFlow, {
     MarkerType,
     useNodesState,
     useEdgesState,
-    addEdge
+    addEdge,
+    Handle,
+    Position
 } from 'reactflow';
 import 'reactflow/dist/style.css';
+
+// ─── Prototyper Status States ───────────────────────────────
+const STATES_LIST = [
+    { type: 'state_todo', label: 'Todo State', icon: Circle, color: 'border-slate-400 text-slate-500 bg-slate-50', desc: 'Initial workflow status' },
+    { type: 'state_progress', label: 'In Progress State', icon: PlayCircle, color: 'border-blue-500 text-blue-500 bg-blue-50/30', desc: 'Active work status' },
+    { type: 'state_review', label: 'Review State', icon: Clock, color: 'border-amber-500 text-amber-500 bg-amber-50/30', desc: 'Quality verification status' },
+    { type: 'state_done', label: 'Done State', icon: CheckCircle2, color: 'border-emerald-500 text-emerald-500 bg-emerald-50/30', desc: 'Completed terminal status' }
+];
 
 // ─── Prototyper Automation Blocks ───────────────────────────
 const ACTIONS_LIST = [
@@ -35,6 +45,271 @@ const ACTIONS_LIST = [
     { type: 'webhook', label: 'API Webhook', icon: Globe, color: 'border-sky-500 text-sky-500 bg-sky-50/30', desc: 'Post generic web request' },
     { type: 'ai_risk', label: 'AI Risk Check', icon: Cpu, color: 'border-purple-500 text-purple-500 bg-purple-50/30', desc: 'Run delay risk evaluation' },
 ];
+
+const getNodeDetails = (type) => {
+    switch (type) {
+        case 'state_todo': return { icon: Circle, color: '#64748b', title: 'Todo State', desc: 'Initial status', isState: true };
+        case 'state_progress': return { icon: PlayCircle, color: '#3b82f6', title: 'In Progress State', desc: 'Active status', isState: true };
+        case 'state_review': return { icon: Clock, color: '#f59e0b', title: 'Review State', desc: 'QA/Verification status', isState: true };
+        case 'state_done': return { icon: CheckCircle2, color: '#10b981', title: 'Done State', desc: 'Terminal status', isState: true };
+        
+        case 'email': return { icon: Mail, color: '#f43f5e', title: 'Send Email', desc: 'Trigger email notification' };
+        case 'assign': return { icon: UserCheck, color: '#3b82f6', title: 'Assign Task', desc: 'Assign task to a member' };
+        case 'status': return { icon: RefreshCw, color: '#10b981', title: 'Update Status', desc: 'Transition task status' };
+        case 'comment': return { icon: MessageSquare, color: '#6366f1', title: 'Add Comment', desc: 'Post automated comment' };
+        case 'slack': return { icon: Send, color: '#14b8a6', title: 'Slack Alert', desc: 'Send Slack channel notification' };
+        case 'timer': return { icon: Play, color: '#f59e0b', title: 'Start Timer', desc: 'Start tracking logged hours' };
+        case 'sla': return { icon: Clock, color: '#e11d48', title: 'Check SLA', desc: 'Check deadline compliance' };
+        case 'subtask': return { icon: Plus, color: '#8b5cf6', title: 'Create Sub-task', desc: 'Spawn a child subtask' };
+        case 'approval': return { icon: FileCheck, color: '#06b6d4', title: 'Request Approval', desc: 'Block task until approved' };
+        case 'attachment': return { icon: Paperclip, color: '#64748b', title: 'Require File', desc: 'Check for task attachment' };
+        case 'webhook': return { icon: Globe, color: '#0ea5e9', title: 'API Webhook', desc: 'Post generic web request' };
+        case 'ai_risk': return { icon: Cpu, color: '#a855f7', title: 'AI Risk Check', desc: 'Run delay risk evaluation' };
+        
+        default: return { icon: Settings2, color: '#cbd5e1', title: 'Action Node', desc: 'Custom transition rule' };
+    }
+};
+
+const CustomWorkflowNode = ({ id, data, selected }) => {
+    const details = getNodeDetails(data.type);
+    const IconComponent = details.icon;
+    const config = data.config || {};
+
+    const handleInputChange = (field, value) => {
+        if (data.onChange) {
+            data.onChange(id, { ...config, [field]: value });
+        }
+    };
+
+    const handleDelete = () => {
+        if (data.onDelete) {
+            data.onDelete(id);
+        }
+    };
+
+    return (
+        <div className={cn(
+            "rounded-2xl border-2 bg-white shadow-lg text-left transition-all relative group min-w-[200px] max-w-[260px]",
+            selected ? "ring-2 ring-primary/20 border-primary" : "border-slate-100"
+        )}>
+            {/* Input Port (Left handle) */}
+            <Handle
+                type="target"
+                position={Position.Left}
+                style={{ background: details.color, width: '10px', height: '10px', borderRadius: '50%' }}
+            />
+
+            {/* Header */}
+            <div className="flex items-start justify-between p-3 border-b border-slate-50">
+                <div className="flex items-center gap-2">
+                    <div className="p-1.5 rounded-lg text-white shrink-0" style={{ backgroundColor: details.color }}>
+                        <IconComponent className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="min-w-0">
+                        <h4 className="font-black text-[10px] uppercase tracking-tighter text-slate-800 leading-none truncate">
+                            {details.title}
+                        </h4>
+                        <span className="text-[8px] text-slate-400 font-medium block mt-0.5 truncate">
+                            {details.desc}
+                        </span>
+                    </div>
+                </div>
+                <button
+                    onClick={handleDelete}
+                    className="p-1 rounded-md text-slate-300 hover:text-rose-500 hover:bg-rose-50/50 transition-colors shrink-0"
+                >
+                    <X className="w-3.5 h-3.5" />
+                </button>
+            </div>
+
+            {/* Body (Fields) */}
+            <div className="p-3 space-y-2 bg-slate-50/50 rounded-b-2xl">
+                {data.type === 'email' && (
+                    <>
+                        <input
+                            type="text"
+                            value={config.recipient || ''}
+                            onChange={(e) => handleInputChange('recipient', e.target.value)}
+                            placeholder="recipient@example.com"
+                            className="w-full px-2 py-1 text-[9px] bg-white border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-rose-500"
+                        />
+                        <textarea
+                            value={config.message || ''}
+                            onChange={(e) => handleInputChange('message', e.target.value)}
+                            placeholder="Email body template..."
+                            rows={2}
+                            className="w-full px-2 py-1 text-[9px] bg-white border border-slate-200 rounded-lg outline-none resize-none focus:ring-1 focus:ring-rose-500"
+                        />
+                    </>
+                )}
+
+                {data.type === 'assign' && (
+                    <input
+                        type="text"
+                        value={config.assignee || ''}
+                        onChange={(e) => handleInputChange('assignee', e.target.value)}
+                        placeholder="Assignee username/ID"
+                        className="w-full px-2 py-1 text-[9px] bg-white border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-blue-500"
+                    />
+                )}
+
+                {data.type === 'status' && (
+                    <select
+                        value={config.status || 'TODO'}
+                        onChange={(e) => handleInputChange('status', e.target.value)}
+                        className="w-full px-2 py-1 text-[9px] bg-white border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-emerald-500"
+                    >
+                        <option value="TODO">TODO</option>
+                        <option value="IN_PROGRESS">IN PROGRESS</option>
+                        <option value="REVIEW">IN REVIEW</option>
+                        <option value="DONE">DONE</option>
+                    </select>
+                )}
+
+                {data.type === 'comment' && (
+                    <textarea
+                        value={config.comment || ''}
+                        onChange={(e) => handleInputChange('comment', e.target.value)}
+                        placeholder="Automated comment text..."
+                        rows={2}
+                        className="w-full px-2 py-1 text-[9px] bg-white border border-slate-200 rounded-lg outline-none resize-none focus:ring-1 focus:ring-indigo-500"
+                    />
+                )}
+
+                {data.type === 'slack' && (
+                    <>
+                        <input
+                            type="text"
+                            value={config.channel || ''}
+                            onChange={(e) => handleInputChange('channel', e.target.value)}
+                            placeholder="#general"
+                            className="w-full px-2 py-1 text-[9px] bg-white border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-teal-500"
+                        />
+                        <textarea
+                            value={config.message || ''}
+                            onChange={(e) => handleInputChange('message', e.target.value)}
+                            placeholder="Slack message..."
+                            rows={2}
+                            className="w-full px-2 py-1 text-[9px] bg-white border border-slate-200 rounded-lg outline-none resize-none focus:ring-1 focus:ring-teal-500"
+                        />
+                    </>
+                )}
+
+                {data.type === 'timer' && (
+                    <div className="flex items-center gap-1.5 text-[9px] text-slate-500">
+                        <span>Pause after:</span>
+                        <input
+                            type="number"
+                            value={config.pauseLimit || 8}
+                            onChange={(e) => handleInputChange('pauseLimit', e.target.value)}
+                            className="w-10 px-1 py-0.5 bg-white border border-slate-200 rounded-lg outline-none text-center"
+                        />
+                        <span>hrs</span>
+                    </div>
+                )}
+
+                {data.type === 'sla' && (
+                    <div className="flex items-center gap-1.5 text-[9px] text-slate-500">
+                        <span>Limit:</span>
+                        <input
+                            type="number"
+                            value={config.limit || 24}
+                            onChange={(e) => handleInputChange('limit', e.target.value)}
+                            className="w-10 px-1 py-0.5 bg-white border border-slate-200 rounded-lg outline-none text-center"
+                        />
+                        <span>hrs</span>
+                    </div>
+                )}
+
+                {data.type === 'subtask' && (
+                    <input
+                        type="text"
+                        value={config.subtaskTitle || ''}
+                        onChange={(e) => handleInputChange('subtaskTitle', e.target.value)}
+                        placeholder="e.g. Code Review"
+                        className="w-full px-2 py-1 text-[9px] bg-white border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-violet-500"
+                    />
+                )}
+
+                {data.type === 'approval' && (
+                    <input
+                        type="text"
+                        value={config.approver || ''}
+                        onChange={(e) => handleInputChange('approver', e.target.value)}
+                        placeholder="Approver role (e.g. Lead)"
+                        className="w-full px-2 py-1 text-[9px] bg-white border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-cyan-500"
+                    />
+                )}
+
+                {data.type === 'attachment' && (
+                    <input
+                        type="text"
+                        value={config.extension || ''}
+                        onChange={(e) => handleInputChange('extension', e.target.value)}
+                        placeholder="Extension (e.g. .pdf)"
+                        className="w-full px-2 py-1 text-[9px] bg-white border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-slate-500"
+                    />
+                )}
+
+                {data.type === 'webhook' && (
+                    <>
+                        <select
+                            value={config.method || 'POST'}
+                            onChange={(e) => handleInputChange('method', e.target.value)}
+                            className="w-full px-2 py-1 text-[9px] bg-white border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-sky-500 animate-none"
+                        >
+                            <option value="GET">GET</option>
+                            <option value="POST">POST</option>
+                            <option value="PUT">PUT</option>
+                            <option value="DELETE">DELETE</option>
+                        </select>
+                        <input
+                            type="text"
+                            value={config.url || ''}
+                            onChange={(e) => handleInputChange('url', e.target.value)}
+                            placeholder="https://api.example.com/webhook"
+                            className="w-full px-2 py-1 text-[9px] bg-white border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-sky-500"
+                        />
+                    </>
+                )}
+
+                {data.type === 'ai_risk' && (
+                    <div className="text-[8px] text-indigo-500 font-bold bg-indigo-50/50 p-1.5 rounded-lg text-center border border-indigo-100 leading-normal">
+                        AI will auto-predict delay risks on state transition.
+                    </div>
+                )}
+
+                {details.isState && (
+                    <>
+                        <input
+                            type="text"
+                            value={config.allowedRoles || ''}
+                            onChange={(e) => handleInputChange('allowedRoles', e.target.value)}
+                            placeholder="Allowed Roles (comma separated)"
+                            className="w-full px-2 py-1 text-[9px] bg-white border border-slate-200 rounded-lg outline-none focus:ring-1 focus:ring-slate-400"
+                        />
+                        <div className="flex items-center gap-1.5 text-[8px] text-slate-400 font-bold">
+                            <input
+                                type="checkbox"
+                                checked={config.reasonRequired || false}
+                                onChange={(e) => handleInputChange('reasonRequired', e.target.checked)}
+                                className="rounded text-slate-600 focus:ring-slate-400 w-3 h-3"
+                            />
+                            <span>Require transition comment</span>
+                        </div>
+                    </>
+                )}
+            </div>
+
+            {/* Output Port (Right handle) */}
+            <Handle
+                type="source"
+                position={Position.Right}
+                style={{ background: details.color, width: '10px', height: '10px', borderRadius: '50%' }}
+            />
+        </div>
+    );
+};
 
 const CreateWorkflowModal = ({ isOpen, onClose, onSubmit, isPending }) => {
     const [form, setForm] = useState({ name: '', description: '' });
@@ -101,7 +376,9 @@ const CreateWorkflowModal = ({ isOpen, onClose, onSubmit, isPending }) => {
     );
 };
 
-const NODE_TYPES = {};
+const NODE_TYPES = {
+    customWorkflow: CustomWorkflowNode
+};
 const EDGE_TYPES = {};
 
 export default function WorkflowPage() {
@@ -123,9 +400,21 @@ export default function WorkflowPage() {
     // Display / Memo Lists for Flow Simulation (Indigo Pulsing Glow)
     const displayNodes = useMemo(() => {
         return nodes.map(n => {
+            const isCustom = n.type === 'customWorkflow';
+            const extraData = isCustom ? {
+                onChange: (nodeId, updatedConfig) => {
+                    setNodes(nds => nds.map(node => node.id === nodeId ? { ...node, data: { ...node.data, config: updatedConfig } } : node));
+                },
+                onDelete: (nodeId) => {
+                    setNodes(nds => nds.filter(node => node.id !== nodeId));
+                    setEdges(eds => eds.filter(edge => edge.source !== nodeId && edge.target !== nodeId));
+                }
+            } : {};
+
             if (n.id === simulatingNodeId) {
                 return {
                     ...n,
+                    data: { ...n.data, ...extraData },
                     style: {
                         ...n.style,
                         transform: 'scale(1.05)',
@@ -136,9 +425,12 @@ export default function WorkflowPage() {
                     }
                 };
             }
-            return n;
+            return {
+                ...n,
+                data: { ...n.data, ...extraData }
+            };
         });
-    }, [nodes, simulatingNodeId]);
+    }, [nodes, simulatingNodeId, setNodes, setEdges]);
 
     const displayEdges = useMemo(() => {
         return edges.map(e => {
@@ -168,6 +460,7 @@ export default function WorkflowPage() {
     });
 
     const updateWorkflow = useMutation({
+        // Capture context for optimistic updates or queries
         mutationFn: (data) => workflowService.update(selectedWorkflow._id, data),
         onSuccess: () => {
             queryClient.invalidateQueries(['workflows']);
@@ -219,32 +512,15 @@ export default function WorkflowPage() {
 
         const nodeId = `${type}_${Date.now()}`;
 
-        // Get border color based on color class
-        let borderColor = '#cbd5e1';
-        if (colorClass.includes('border-rose-500')) borderColor = '#f43f5e';
-        else if (colorClass.includes('border-blue-500')) borderColor = '#3b82f6';
-        else if (colorClass.includes('border-emerald-500')) borderColor = '#10b981';
-        else if (colorClass.includes('border-indigo-500')) borderColor = '#6366f1';
-        else if (colorClass.includes('border-teal-500')) borderColor = '#14b8a6';
-        else if (colorClass.includes('border-amber-500')) borderColor = '#f59e0b';
-        else if (colorClass.includes('border-rose-600')) borderColor = '#e11d48';
-        else if (colorClass.includes('border-violet-500')) borderColor = '#8b5cf6';
-        else if (colorClass.includes('border-cyan-500')) borderColor = '#06b6d4';
-        else if (colorClass.includes('border-slate-500')) borderColor = '#64748b';
-        else if (colorClass.includes('border-sky-500')) borderColor = '#0ea5e9';
-        else if (colorClass.includes('border-purple-500')) borderColor = '#a855f7';
-
         const newNode = {
             id: nodeId,
-            type: 'default',
+            type: 'customWorkflow',
             position,
-            data: { label: <span className="font-black text-xs uppercase tracking-tighter flex items-center gap-1.5 justify-center">{label}</span> },
-            style: {
-                borderRadius: '16px',
-                border: `2px solid ${borderColor}`,
-                background: '#fff',
-                boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-                width: 150
+            data: { 
+                type, 
+                label, 
+                colorClass,
+                config: {}
             }
         };
 
@@ -315,6 +591,10 @@ export default function WorkflowPage() {
         if (window.confirm('Are you sure you want to clear the canvas? This will delete all nodes and connections.')) {
             setNodes([]);
             setEdges([]);
+            if (activeWf) {
+                localStorage.removeItem(`wf_nodes_${activeWf._id}`);
+                localStorage.removeItem(`wf_edges_${activeWf._id}`);
+            }
             toast.success('Canvas cleared.');
         }
     };
@@ -326,19 +606,23 @@ export default function WorkflowPage() {
             const res = await aiService.generateWorkflow(aiPrompt);
             const data = res.data;
             if (data) {
-                // Update active workflow locally and in editor
-                const newNodes = data.states.map((s, i) => ({
-                    id: s.name,
-                    data: { label: <span className="font-black text-xs uppercase tracking-tighter">{s.name}</span> },
-                    position: { x: 100 + (i * 200), y: i % 2 === 0 ? 100 : 250 },
-                    style: {
-                        borderRadius: '16px',
-                        border: `2px solid ${s.color || '#cbd5e1'}`,
-                        background: '#fff',
-                        boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-                        width: 150
-                    }
-                }));
+                const newNodes = data.states.map((s, i) => {
+                    let type = 'state_progress';
+                    if (s.type === 'initial' || s.name === 'TODO') type = 'state_todo';
+                    else if (s.type === 'terminal' || s.name === 'DONE') type = 'state_done';
+                    
+                    return {
+                        id: s.name,
+                        type: 'customWorkflow',
+                        position: { x: 100 + (i * 200), y: i % 2 === 0 ? 100 : 250 },
+                        data: {
+                            type,
+                            label: s.name,
+                            colorClass: s.color || '#cbd5e1',
+                            config: {}
+                        }
+                    };
+                });
 
                 const newEdges = data.transitions.map((t, i) => ({
                     id: `e-${t.from}-${t.to}-${i}`,
@@ -352,7 +636,6 @@ export default function WorkflowPage() {
                 setNodes(newNodes);
                 setEdges(newEdges);
 
-                // Automatically persist the AI-generated structure to the backend
                 const states = data.states.map((s, i) => ({
                     name: s.name,
                     type: s.type || 'active',
@@ -378,23 +661,44 @@ export default function WorkflowPage() {
         }
     };
 
-
     const activeWf = selectedWorkflow || workflows?.[0];
 
     React.useEffect(() => {
         if (activeWf) {
-            const initialNodes = activeWf.states.map((s, i) => ({
-                id: s.name,
-                data: { label: <span className="font-black text-xs uppercase tracking-tighter">{s.name}</span> },
-                position: s.position || { x: 100 + (i * 200), y: i % 2 === 0 ? 100 : 250 },
-                style: {
-                    borderRadius: '16px',
-                    border: `2px solid ${s.color || '#cbd5e1'}`,
-                    background: '#fff',
-                    boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-                    width: 150
+            const savedNodes = localStorage.getItem(`wf_nodes_${activeWf._id}`);
+            const savedEdges = localStorage.getItem(`wf_edges_${activeWf._id}`);
+
+            if (savedNodes && savedEdges) {
+                try {
+                    setNodes(JSON.parse(savedNodes));
+                    setEdges(JSON.parse(savedEdges));
+                    return;
+                } catch (e) {
+                    console.error("Failed to parse saved layout from localStorage", e);
                 }
-            }));
+            }
+
+            const initialNodes = activeWf.states.map((s, i) => {
+                let type = 'state_progress';
+                if (s.type === 'initial' || s.name === 'TODO') type = 'state_todo';
+                else if (s.type === 'terminal' || s.name === 'DONE') type = 'state_done';
+                else if (s.name === 'REVIEW' || s.name === 'IN_REVIEW') type = 'state_review';
+
+                return {
+                    id: s.name,
+                    type: 'customWorkflow',
+                    data: {
+                        type,
+                        label: s.name,
+                        colorClass: s.color || '#cbd5e1',
+                        config: {
+                            allowedRoles: s.allowedRoles || '',
+                            reasonRequired: !!s.reasonRequired
+                        }
+                    },
+                    position: s.position || { x: 100 + (i * 200), y: i % 2 === 0 ? 100 : 250 }
+                };
+            });
 
             const initialEdges = activeWf.transitions.map((t, i) => ({
                 id: `e-${t.from}-${t.to}-${i}`,
@@ -414,18 +718,39 @@ export default function WorkflowPage() {
     const onConnect = React.useCallback((params) => setEdges((eds) => addEdge({ ...params, animated: true, style: { stroke: '#334155', strokeWidth: 2 } }, eds)), [setEdges]);
 
     const handleSave = () => {
-        const states = nodes.map(n => ({
-            name: n.id,
-            type: activeWf.states.find(s => s.name === n.id)?.type || 'active',
-            color: n.style?.border?.split(' ')[2] || '#cbd5e1',
-            position: n.position
-        }));
+        if (!activeWf) return;
 
-        const transitions = edges.map(e => ({
-            from: e.source,
-            to: e.target,
-            requiresComment: e.label === '!'
-        }));
+        // Save full configuration visually in localStorage
+        localStorage.setItem(`wf_nodes_${activeWf._id}`, JSON.stringify(nodes));
+        localStorage.setItem(`wf_edges_${activeWf._id}`, JSON.stringify(edges));
+
+        const states = nodes.map(n => {
+            const details = getNodeDetails(n.data?.type);
+            let stateType = 'active';
+            if (n.data?.type === 'state_todo') stateType = 'initial';
+            else if (n.data?.type === 'state_done') stateType = 'terminal';
+
+            return {
+                name: n.id,
+                type: stateType,
+                color: details.color,
+                position: n.position
+            };
+        });
+
+        const transitions = edges.map(e => {
+            const sourceNode = nodes.find(n => n.id === e.source);
+            const requiresComment = sourceNode?.data?.config?.reasonRequired || false;
+            const allowedRolesStr = sourceNode?.data?.config?.allowedRoles || '';
+            const allowedRoles = allowedRolesStr ? allowedRolesStr.split(',').map(r => r.trim()).filter(Boolean) : [];
+
+            return {
+                from: e.source,
+                to: e.target,
+                requiresComment,
+                allowedRoles: allowedRoles.filter(r => ['admin', 'manager', 'user'].includes(r))
+            };
+        });
 
         updateWorkflow.mutate({ states, transitions });
         toast.success('Workflow configuration saved locally');
@@ -441,7 +766,7 @@ export default function WorkflowPage() {
         <div className="p-8 max-w-7xl mx-auto">
             <div className="flex items-center justify-between mb-8">
                 <div>
-                    <h1 className="text-3xl font-black text-slate-900 tracking-tight flex items-center gap-3">
+                    <h1 className="text-3xl font-black text-slate-900 tracking-tight flex items-center gap-3 italic">
                         <GitMerge className="w-8 h-8 text-primary" />
                         Workflow Engine
                     </h1>
@@ -449,7 +774,7 @@ export default function WorkflowPage() {
                 </div>
                 <button
                     onClick={() => setIsCreateOpen(true)}
-                    className="flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-xl font-bold hover:shadow-lg transition-all active:scale-95"
+                    className="flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-xl font-bold hover:shadow-lg transition-all active:scale-95 shadow-lg shadow-primary/20"
                 >
                     <Plus className="w-5 h-5" />
                     New Workflow
@@ -547,7 +872,7 @@ export default function WorkflowPage() {
                                 </div>
 
                                 {/* ReactFlow Visualization */}
-                                <div className="h-[520px] w-full bg-slate-50 border-2 border-slate-100 rounded-3xl overflow-hidden mt-5 relative">
+                                <div className="h-[520px] w-full bg-slate-50 border-2 border-slate-100 rounded-3xl overflow-hidden mt-5 relative shadow-inner">
                                     <ReactFlow
                                         nodes={displayNodes}
                                         edges={displayEdges}
@@ -575,8 +900,8 @@ export default function WorkflowPage() {
                                 <div>
                                     <h4 className="text-xs font-black text-primary uppercase tracking-tight">Pro Tip: Restricted Transitions</h4>
                                     <p className="text-[11px] text-slate-600 mt-0.5 leading-relaxed">
-                                        Use "Allowed Roles" to restrict sensitive transitions (like moving to QA or Production) to managers only.
-                                        Enable "Reason Required" to ensure every status change is documented in the task's activity log.
+                                        Use "Allowed Roles" inside the State cards to restrict transitions to specific roles.
+                                        Check "Require transition comment" to ensure users explain why they changed the state.
                                     </p>
                                 </div>
                             </div>
@@ -592,40 +917,77 @@ export default function WorkflowPage() {
                 </div>
 
                 {/* Sidebar: Action Toolbar */}
-                <div className="col-span-3 bg-slate-50/50 rounded-3xl border-2 border-slate-100 p-5 space-y-4">
+                <div className="col-span-3 bg-slate-50/50 rounded-3xl border-2 border-slate-100 p-5 space-y-5">
                     <div>
                         <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider flex items-center gap-2">
                             <Sparkles className="w-4 h-4 text-indigo-500" />
                             Action Toolbar
                         </h3>
-                        <p className="text-[10px] text-slate-400 font-bold italic mt-0.5">Drag & drop action blocks onto the canvas to construct automation rules</p>
+                        <p className="text-[10px] text-slate-400 font-bold italic mt-0.5">Drag & drop items onto the canvas to construct your workflow</p>
                     </div>
 
-                    <div className="space-y-2.5 overflow-y-auto max-h-[640px] pr-1 custom-scrollbar">
-                        {ACTIONS_LIST.map((action) => {
-                            const IconComponent = action.icon;
-                            return (
-                                <div
-                                    key={action.type}
-                                    draggable
-                                    onDragStart={(e) => onDragStart(e, action.type, action.label, action.color)}
-                                    className={cn(
-                                        "flex flex-col p-3 rounded-xl border-2 bg-white cursor-grab active:cursor-grabbing hover:shadow-md transition-all group",
-                                        action.color
-                                    )}
-                                >
-                                    <div className="flex items-center gap-2">
-                                        <IconComponent className="w-4 h-4 shrink-0" />
-                                        <h4 className="font-black text-[11px] uppercase tracking-tighter text-slate-700 group-hover:text-slate-900 transition-colors">
-                                            {action.label}
-                                        </h4>
-                                    </div>
-                                    <p className="text-[10px] text-slate-400 mt-1 leading-tight">
-                                        {action.desc}
-                                    </p>
-                                </div>
-                            );
-                        })}
+                    <div className="space-y-4 overflow-y-auto max-h-[640px] pr-1 custom-scrollbar">
+                        {/* Section 1: States */}
+                        <div className="space-y-2">
+                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Workflow States</h4>
+                            <div className="grid grid-cols-1 gap-2">
+                                {STATES_LIST.map((state) => {
+                                    const IconComponent = state.icon;
+                                    return (
+                                        <div
+                                            key={state.type}
+                                            draggable
+                                            onDragStart={(e) => onDragStart(e, state.type, state.label, state.color)}
+                                            className={cn(
+                                                "flex flex-col p-2.5 rounded-xl border-2 bg-white cursor-grab active:cursor-grabbing hover:shadow-md transition-all group",
+                                                state.color
+                                            )}
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                <IconComponent className="w-4 h-4 shrink-0" />
+                                                <h5 className="font-black text-[10px] uppercase tracking-tighter text-slate-700 group-hover:text-slate-900 transition-colors">
+                                                    {state.label}
+                                                </h5>
+                                            </div>
+                                            <p className="text-[9px] text-slate-400 mt-0.5 leading-tight">
+                                                {state.desc}
+                                            </p>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        {/* Section 2: Automation Actions */}
+                        <div className="space-y-2">
+                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Automation Actions</h4>
+                            <div className="space-y-2">
+                                {ACTIONS_LIST.map((action) => {
+                                    const IconComponent = action.icon;
+                                    return (
+                                        <div
+                                            key={action.type}
+                                            draggable
+                                            onDragStart={(e) => onDragStart(e, action.type, action.label, action.color)}
+                                            className={cn(
+                                                "flex flex-col p-2.5 rounded-xl border-2 bg-white cursor-grab active:cursor-grabbing hover:shadow-md transition-all group",
+                                                action.color
+                                            )}
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                <IconComponent className="w-4 h-4 shrink-0" />
+                                                <h5 className="font-black text-[10px] uppercase tracking-tighter text-slate-700 group-hover:text-slate-900 transition-colors">
+                                                    {action.label}
+                                                </h5>
+                                            </div>
+                                            <p className="text-[9px] text-slate-400 mt-0.5 leading-tight">
+                                                {action.desc}
+                                            </p>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>

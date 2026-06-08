@@ -1,17 +1,36 @@
-import React, { useState } from 'react';
-import { ExternalLink, RefreshCw, Loader2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ExternalLink, RefreshCw, Loader2, ArrowRight, ShieldAlert } from 'lucide-react';
 
 const SubModulePage = ({ title, url, icon: Icon, description }) => {
     const [isLoading, setIsLoading] = useState(true);
     const [iframeKey, setIframeKey] = useState(0);
+    const [showFallback, setShowFallback] = useState(false);
+
+    useEffect(() => {
+        let timer;
+        if (isLoading) {
+            // If the iframe hasn't finished loading in 4 seconds, show the fallback prompt
+            timer = setTimeout(() => {
+                setShowFallback(true);
+            }, 4000);
+        } else {
+            setShowFallback(false);
+        }
+        return () => clearTimeout(timer);
+    }, [isLoading, iframeKey]);
 
     const handleRefresh = () => {
         setIsLoading(true);
+        setShowFallback(false);
         setIframeKey(prev => prev + 1);
     };
 
     const handleOpenNewTab = () => {
         window.open(url, '_blank', 'noopener,noreferrer');
+    };
+
+    const handleOpenSameTab = () => {
+        window.location.href = url;
     };
 
     return (
@@ -32,8 +51,15 @@ const SubModulePage = ({ title, url, icon: Icon, description }) => {
                         onClick={handleRefresh}
                         className="flex items-center gap-2 px-4 py-2.5 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-xl text-xs font-bold transition-all border border-slate-200"
                     >
-                        <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+                        <RefreshCw className={`w-4 h-4 ${isLoading && !showFallback ? 'animate-spin' : ''}`} />
                         Refresh
+                    </button>
+                    <button
+                        onClick={handleOpenSameTab}
+                        className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all border border-slate-200"
+                    >
+                        <ArrowRight className="w-4 h-4" />
+                        Open in Same Tab
                     </button>
                     <button
                         onClick={handleOpenNewTab}
@@ -47,15 +73,52 @@ const SubModulePage = ({ title, url, icon: Icon, description }) => {
 
             {/* IFrame Container */}
             <div className="flex-1 min-h-0 bg-white rounded-2xl border border-slate-100 shadow-sm relative overflow-hidden flex flex-col">
-                {isLoading && (
+                {isLoading && !showFallback && (
                     <div className="absolute inset-0 bg-slate-50/80 backdrop-blur-sm z-10 flex flex-col items-center justify-center space-y-3">
                         <Loader2 className="w-10 h-10 text-primary animate-spin" />
                         <p className="text-sm font-bold text-slate-500">Loading submodule securely...</p>
-                        <p className="text-xs text-slate-400 max-w-xs text-center">
-                            If the app doesn't load, it may restrict embedding. You can always use the <span className="font-semibold text-primary cursor-pointer hover:underline" onClick={handleOpenNewTab}>Open in New Tab</span> option above.
-                        </p>
                     </div>
                 )}
+
+                {showFallback && (
+                    <div className="absolute inset-0 bg-slate-50/90 backdrop-blur-sm z-20 flex flex-col items-center justify-center p-8 text-center">
+                        <div className="w-16 h-16 bg-amber-50 rounded-2xl flex items-center justify-center border border-amber-100 text-amber-500 mb-4 animate-bounce">
+                            <ShieldAlert className="w-8 h-8" />
+                        </div>
+                        <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight">IFrame Loading Blocked</h3>
+                        <p className="text-slate-500 text-sm mt-2 max-w-md leading-relaxed">
+                            For security reasons, some applications prevent themselves from being embedded inside other websites (due to strict browser policies like <code className="bg-slate-100 px-1 py-0.5 rounded text-rose-500 text-xs font-mono">X-Frame-Options</code>).
+                        </p>
+                        <p className="text-slate-400 text-xs mt-1 max-w-sm">
+                            You can easily access this submodule using the redirection options below:
+                        </p>
+                        
+                        <div className="flex flex-wrap justify-center gap-3 mt-6">
+                            <button
+                                onClick={handleOpenSameTab}
+                                className="flex items-center gap-2 px-5 py-3 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold shadow-md transition-all active:scale-95"
+                            >
+                                <ArrowRight className="w-4 h-4" />
+                                Open in Same Tab
+                            </button>
+                            <button
+                                onClick={handleOpenNewTab}
+                                className="flex items-center gap-2 px-5 py-3 bg-primary hover:bg-primary/95 text-white rounded-xl text-xs font-bold shadow-md transition-all active:scale-95"
+                            >
+                                <ExternalLink className="w-4 h-4" />
+                                Open in New Tab
+                            </button>
+                            <button
+                                onClick={handleRefresh}
+                                className="flex items-center gap-2 px-5 py-3 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold shadow-sm transition-all active:scale-95"
+                            >
+                                <RefreshCw className="w-4 h-4" />
+                                Retry Connection
+                            </button>
+                        </div>
+                    </div>
+                )}
+                
                 <iframe
                     key={iframeKey}
                     src={url}
