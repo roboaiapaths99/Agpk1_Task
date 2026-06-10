@@ -29,9 +29,6 @@ const SubModulePage = ({ title, url, icon: Icon, description }) => {
         window.open(url, '_blank', 'noopener,noreferrer');
     };
 
-    const handleOpenSameTab = () => {
-        window.location.href = url;
-    };
 
     return (
         <div className="flex flex-col h-[calc(100vh-6rem)] space-y-6 pb-6">
@@ -53,13 +50,6 @@ const SubModulePage = ({ title, url, icon: Icon, description }) => {
                     >
                         <RefreshCw className={`w-4 h-4 ${isLoading && !showFallback ? 'animate-spin' : ''}`} />
                         Refresh
-                    </button>
-                    <button
-                        onClick={handleOpenSameTab}
-                        className="flex items-center gap-2 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all border border-slate-200"
-                    >
-                        <ArrowRight className="w-4 h-4" />
-                        Open in Same Tab
                     </button>
                     <button
                         onClick={handleOpenNewTab}
@@ -94,13 +84,6 @@ const SubModulePage = ({ title, url, icon: Icon, description }) => {
                         </p>
                         
                         <div className="flex flex-wrap justify-center gap-3 mt-6">
-                            <button
-                                onClick={handleOpenSameTab}
-                                className="flex items-center gap-2 px-5 py-3 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold shadow-md transition-all active:scale-95"
-                            >
-                                <ArrowRight className="w-4 h-4" />
-                                Open in Same Tab
-                            </button>
                             <button
                                 onClick={handleOpenNewTab}
                                 className="flex items-center gap-2 px-5 py-3 bg-primary hover:bg-primary/95 text-white rounded-xl text-xs font-bold shadow-md transition-all active:scale-95"
