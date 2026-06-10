@@ -44,14 +44,14 @@ class TaskController {
 
     async assign(req, res, next) {
         try {
-            const task = await taskService.assignTask(req.params.id, req.user.organizationId, req.body.assigneeId, req.user.id);
+            const task = await taskService.assignTask(req.params.id, req.user.organizationId, req.body.assigneeId, req.user.id, req.user.role);
             return success(res, { task }, 'Task assigned');
         } catch (error) { next(error); }
     }
 
     async changeStatus(req, res, next) {
         try {
-            const task = await taskService.changeStatus(req.params.id, req.user.organizationId, req.body.status, req.user.id);
+            const task = await taskService.changeStatus(req.params.id, req.user.organizationId, req.body.status, req.user.id, req.user.role);
             return success(res, { task }, 'Status updated');
         } catch (error) { next(error); }
     }
@@ -80,7 +80,7 @@ class TaskController {
 
     async getSubTasks(req, res, next) {
         try {
-            const subTasks = await taskService.getSubTasks(req.params.id, req.user.organizationId);
+            const subTasks = await taskService.getSubTasks(req.params.id, req.user.organizationId, req.user.id, req.user.role);
             return success(res, { subTasks });
         } catch (error) { next(error); }
     }

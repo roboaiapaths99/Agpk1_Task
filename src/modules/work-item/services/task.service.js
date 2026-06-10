@@ -87,7 +87,22 @@ class TaskService {
 
         const projectIds = await this._getAccessibleProjectIds(organizationId, userId, userRole);
         if (projectIds) {
-            filter.project = { $in: projectIds };
+            if (queryParams.project) {
+                // If they specifically queried a project, ensure it's one they have access to
+                const hasAccess = projectIds.some(id => id.toString() === queryParams.project.toString());
+                if (hasAccess) {
+                    filter.project = queryParams.project;
+                } else {
+                    // No access to this project, force filter to return empty array or only accessible projects
+                    filter.project = { $in: [] };
+                }
+            } else {
+                // If no specific project queried, show accessible projects OR standalone tasks
+                filter.$or = [
+                    { project: { $in: projectIds } },
+                    { project: null }
+                ];
+            }
         }
 
         const [tasks, total] = await Promise.all([
@@ -122,8 +137,9 @@ class TaskService {
         if (task.project && userRole !== 'admin') {
             const project = task.project;
             const ownerId = project.owner?._id || project.owner;
-            const isMember = ownerId.toString() === userId.toString() || 
-                             project.members.some(m => (m?._id || m).toString() === userId.toString());
+            const members = project.members || [];
+            const isMember = (ownerId && ownerId.toString() === userId.toString()) || 
+                             members.some(m => m && (m?._id || m).toString() === userId.toString());
             if (!isMember) {
                 throw new ForbiddenError('Access denied: You are not a member of this project');
             }
@@ -154,7 +170,7 @@ class TaskService {
             delete updateData.status;
 
             // First apply the status change via dedicated method (checks workflow)
-            await this.changeStatus(taskId, organizationId, newStatus, userId);
+            await this.changeStatus(taskId, organizationId, newStatus, userId, userRole);
 
             // Then apply the rest of the updates
             if (Object.keys(updateData).length === 0) {
@@ -199,7 +215,10 @@ class TaskService {
         return task;
     }
 
-    async assignTask(taskId, organizationId, assigneeId, userId) {
+    async assignTask(taskId, organizationId, assigneeId, userId, userRole) {
+        // Enforce project membership check via getTaskById
+        await this.getTaskById(taskId, organizationId, userId, userRole);
+
         const task = await Task.findOneAndUpdate(
             { _id: taskId, organizationId },
             { assignee: assigneeId },
@@ -222,7 +241,10 @@ class TaskService {
         return task;
     }
 
-    async changeStatus(taskId, organizationId, status, userId, reason = '') {
+    async changeStatus(taskId, organizationId, status, userId, userRole, reason = '') {
+        // Enforce project membership check via getTaskById
+        await this.getTaskById(taskId, organizationId, userId, userRole);
+
         const task = await Task.findOne({ _id: taskId, organizationId });
         if (!task) throw new NotFoundError('Task');
 
