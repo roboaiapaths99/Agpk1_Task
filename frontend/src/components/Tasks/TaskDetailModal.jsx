@@ -100,21 +100,17 @@ const TaskDetailModal = ({ task: initialTask, taskId, onClose, onUpdate, isOpen 
         enabled: !!(task?.project?._id || task?.project),
     });
 
-    const projectMembers = Array.isArray(projectMembersRaw?.members) ? projectMembersRaw.members
-        : Array.isArray(projectMembersRaw?.data?.members) ? projectMembersRaw.data.members
-            : Array.isArray(projectMembersRaw?.data) ? projectMembersRaw.data : [];
-
     const { data: allUsersRaw } = useQuery({
         queryKey: ['all-users'],
         queryFn: () => profileService.getAllUsers(),
-        enabled: !(task?.project?._id || task?.project),
+        enabled: true,
     });
 
     const allUsers = Array.isArray(allUsersRaw?.users) ? allUsersRaw.users
         : Array.isArray(allUsersRaw?.data?.users) ? allUsersRaw.data.users
             : Array.isArray(allUsersRaw?.data) ? allUsersRaw.data : [];
 
-    const assignableUsers = (task?.project?._id || task?.project) ? projectMembers : allUsers;
+    const assignableUsers = allUsers;
 
     React.useEffect(() => {
         if (task) {
