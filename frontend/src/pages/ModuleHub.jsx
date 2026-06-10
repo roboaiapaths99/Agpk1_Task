@@ -83,7 +83,7 @@ const modules = [
         description: 'Real-time stock management, procurement, and warehouse tracking.',
         icon: Package,
         color: 'bg-amber-500',
-        link: '/inventory',
+        externalUrl: 'https://inventory.agpkacademy.in/login',
         status: 'Active',
         stats: 'Sub-Module'
     },
@@ -93,7 +93,7 @@ const modules = [
         description: 'Client relationship management, pipelines, and contact logs.',
         icon: Briefcase,
         color: 'bg-rose-500',
-        link: '/crm',
+        externalUrl: 'https://crm.agpkacademy.in',
         status: 'Active',
         stats: 'Sub-Module'
     },
@@ -103,7 +103,7 @@ const modules = [
         description: 'Office attendance tracking, timesheets, and monitoring desk.',
         icon: Camera,
         color: 'bg-teal-500',
-        link: '/attendance',
+        externalUrl: 'https://attendence-inofice-admin-desk.vercel.app/',
         status: 'Active',
         stats: 'Sub-Module'
     },
@@ -113,7 +113,7 @@ const modules = [
         description: 'Human resource management system, documents, and benefits.',
         icon: Users,
         color: 'bg-indigo-600',
-        link: '/hrms',
+        externalUrl: 'https://hrms.agpkacademy.in/',
         status: 'Active',
         stats: 'Sub-Module'
     }
@@ -187,6 +187,19 @@ const ModuleCard = ({ module, onPlaceholderClick }) => {
             >
                 {content}
             </button>
+        );
+    }
+
+    if (module.externalUrl) {
+        return (
+            <a
+                href={module.externalUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="glass-card p-8 group relative overflow-hidden transition-all duration-500 hover:shadow-2xl hover:-translate-y-2 border-slate-100 block"
+            >
+                {content}
+            </a>
         );
     }
 

@@ -60,10 +60,10 @@ const navItems = [
     { icon: GitBranch, label: 'Work Graph', path: '/work-graph' },
     { icon: Zap, label: 'AI Insights', path: '/insights' },
     { icon: BookOpen, label: 'Docs', path: '/docs' },
-    { icon: Package, label: 'Inventory', path: '/inventory' },
-    { icon: Briefcase, label: 'CRM', path: '/crm' },
-    { icon: Camera, label: 'Attendance Pulse', path: '/attendance' },
-    { icon: Users, label: 'HRMS Portal', path: '/hrms' },
+    { icon: Package, label: 'Inventory', externalUrl: 'https://inventory.agpkacademy.in/login' },
+    { icon: Briefcase, label: 'CRM', externalUrl: 'https://crm.agpkacademy.in' },
+    { icon: Camera, label: 'Attendance Pulse', externalUrl: 'https://attendence-inofice-admin-desk.vercel.app/' },
+    { icon: Users, label: 'HRMS Portal', externalUrl: 'https://hrms.agpkacademy.in/' },
     { icon: Bell, label: 'Notifications', path: '/notifications' },
     { icon: Building2, label: 'Organization', path: '/organization', adminOnly: true },
     { icon: GitMerge, label: 'Integrations', path: '/integrations', adminOnly: true },
@@ -149,21 +149,37 @@ export const Sidebar = () => {
             <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto custom-scrollbar">
                 {navItems
                     .filter(item => !item.adminOnly || user?.role === 'admin')
-                    .map((item) => (
-                        <NavLink
-                            key={item.path + item.label}
-                            to={item.path}
-                            end={item.path === '/'}
-                            data-tour={item.tourId || undefined}
-                            className={({ isActive }) => cn(
-                                "flex items-center px-3 py-2.5 rounded-lg transition-colors group",
-                                isActive ? "bg-primary text-white" : "hover:bg-slate-800 hover:text-white"
-                            )}
-                        >
-                            <item.icon className="w-5 h-5 flex-shrink-0" />
-                            {isSidebarOpen && <span className="ml-3 font-medium">{item.label}</span>}
-                        </NavLink>
-                    ))}
+                    .map((item) => {
+                        if (item.externalUrl) {
+                            return (
+                                <a
+                                    key={item.label}
+                                    href={item.externalUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center px-3 py-2.5 rounded-lg transition-colors group hover:bg-slate-800 hover:text-white text-slate-300"
+                                >
+                                    <item.icon className="w-5 h-5 flex-shrink-0" />
+                                    {isSidebarOpen && <span className="ml-3 font-medium">{item.label}</span>}
+                                </a>
+                            );
+                        }
+                        return (
+                            <NavLink
+                                key={item.path + item.label}
+                                to={item.path}
+                                end={item.path === '/'}
+                                data-tour={item.tourId || undefined}
+                                className={({ isActive }) => cn(
+                                    "flex items-center px-3 py-2.5 rounded-lg transition-colors group",
+                                    isActive ? "bg-primary text-white" : "hover:bg-slate-800 hover:text-white"
+                                )}
+                            >
+                                <item.icon className="w-5 h-5 flex-shrink-0" />
+                                {isSidebarOpen && <span className="ml-3 font-medium">{item.label}</span>}
+                            </NavLink>
+                        );
+                    })}
             </nav>
 
             {/* Footer */}
