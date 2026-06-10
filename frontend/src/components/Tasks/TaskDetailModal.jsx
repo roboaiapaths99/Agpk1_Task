@@ -7,7 +7,7 @@ import {
 import { toast } from 'react-hot-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
-import { taskService, workflowService, attachmentService, commonService, projectService } from '../../services/api/apiServices';
+import { taskService, workflowService, attachmentService, commonService, projectService, profileService } from '../../services/api/apiServices';
 import { cn } from '../../lib/utils';
 import WorklogList from './WorklogList';
 import { format } from 'date-fns';
@@ -103,6 +103,18 @@ const TaskDetailModal = ({ task: initialTask, taskId, onClose, onUpdate, isOpen 
     const projectMembers = Array.isArray(projectMembersRaw?.members) ? projectMembersRaw.members
         : Array.isArray(projectMembersRaw?.data?.members) ? projectMembersRaw.data.members
             : Array.isArray(projectMembersRaw?.data) ? projectMembersRaw.data : [];
+
+    const { data: allUsersRaw } = useQuery({
+        queryKey: ['all-users'],
+        queryFn: () => profileService.getAllUsers(),
+        enabled: !(task?.project?._id || task?.project),
+    });
+
+    const allUsers = Array.isArray(allUsersRaw?.users) ? allUsersRaw.users
+        : Array.isArray(allUsersRaw?.data?.users) ? allUsersRaw.data.users
+            : Array.isArray(allUsersRaw?.data) ? allUsersRaw.data : [];
+
+    const assignableUsers = (task?.project?._id || task?.project) ? projectMembers : allUsers;
 
     React.useEffect(() => {
         if (task) {
@@ -329,6 +341,10 @@ const TaskDetailModal = ({ task: initialTask, taskId, onClose, onUpdate, isOpen 
     const handleSaveIssueType = (val) => {
         setIssueType(val);
         updateTask.mutate({ issueType: val });
+    };
+
+    const handleSaveAssignee = (val) => {
+        updateTask.mutate({ assignee: val || null });
     };
 
     const handleSaveStoryPoints = () => {
@@ -656,7 +672,16 @@ const TaskDetailModal = ({ task: initialTask, taskId, onClose, onUpdate, isOpen 
                                                 {(task.assignee?.name || 'NA').substring(0, 2).toUpperCase()}
                                             </div>
                                             <div>
-                                                <p className="text-sm font-bold text-slate-900">{task.assignee?.name || 'Unassigned'}</p>
+                                                <select
+                                                    value={task.assignee?._id || task.assignee || ''}
+                                                    onChange={(e) => handleSaveAssignee(e.target.value)}
+                                                    className="bg-transparent hover:bg-slate-50 border border-transparent hover:border-slate-200 rounded-lg py-1 px-1.5 text-sm font-bold text-slate-900 focus:ring-1 focus:ring-primary/20 outline-none cursor-pointer"
+                                                >
+                                                    <option value="">Unassigned</option>
+                                                    {assignableUsers.map(u => (
+                                                        <option key={u._id} value={u._id}>{u.name}</option>
+                                                    ))}
+                                                </select>
                                                 <p className="text-[10px] text-slate-500 uppercase font-black tracking-tight">{task.assignee?.role || ''}</p>
                                             </div>
                                         </div>
@@ -734,7 +759,7 @@ const TaskDetailModal = ({ task: initialTask, taskId, onClose, onUpdate, isOpen 
                                                     className="bg-white border border-slate-200 rounded-lg py-1 px-2 text-xs font-semibold focus:ring-1 focus:ring-primary/20 outline-none"
                                                 >
                                                     <option value="">Unassigned</option>
-                                                    {projectMembers.map(u => (
+                                                    {assignableUsers.map(u => (
                                                         <option key={u._id} value={u._id}>{u.name}</option>
                                                     ))}
                                                 </select>
@@ -1006,7 +1031,7 @@ const TaskDetailModal = ({ task: initialTask, taskId, onClose, onUpdate, isOpen 
                                                                     className="bg-slate-50 border border-slate-200 rounded-lg py-1 px-1.5 text-[10px] font-bold text-slate-650 focus:ring-1 focus:ring-primary/20 outline-none max-w-[120px]"
                                                                 >
                                                                     <option value="">Unassigned</option>
-                                                                    {projectMembers.map(u => (
+                                                                    {assignableUsers.map(u => (
                                                                         <option key={u._id} value={u._id}>{u.name}</option>
                                                                     ))}
                                                                 </select>

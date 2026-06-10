@@ -97,10 +97,13 @@ class TaskService {
                     filter.project = { $in: [] };
                 }
             } else {
-                // If no specific project queried, show accessible projects OR standalone tasks
+                // If no specific project queried, show accessible projects OR standalone tasks OR tasks where user is assignee, creator, or watcher
                 filter.$or = [
                     { project: { $in: projectIds } },
-                    { project: null }
+                    { project: null },
+                    { assignee: userId },
+                    { createdBy: userId },
+                    { watchers: userId }
                 ];
             }
         }
@@ -140,7 +143,12 @@ class TaskService {
             const members = project.members || [];
             const isMember = (ownerId && ownerId.toString() === userId.toString()) || 
                              members.some(m => m && (m?._id || m).toString() === userId.toString());
-            if (!isMember) {
+            
+            const isAssignee = task.assignee && (task.assignee._id || task.assignee).toString() === userId.toString();
+            const isCreator = task.createdBy && (task.createdBy._id || task.createdBy).toString() === userId.toString();
+            const isWatcher = task.watchers && task.watchers.some(w => w && (w._id || w).toString() === userId.toString());
+
+            if (!isMember && !isAssignee && !isCreator && !isWatcher) {
                 throw new ForbiddenError('Access denied: You are not a member of this project');
             }
         }

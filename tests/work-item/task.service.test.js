@@ -42,7 +42,7 @@ describe('TaskService Access & Visibility Tests', () => {
     });
 
     describe('getTasks', () => {
-        it('should retrieve project tasks and standalone tasks for non-admins', async () => {
+        it('should retrieve project tasks, standalone tasks, and user-associated tasks for non-admins', async () => {
             const mockProjects = [{ _id: mockProjId }];
             projectFindSpy.mockReturnValue({
                 select: jest.fn().mockResolvedValue(mockProjects)
@@ -66,7 +66,10 @@ describe('TaskService Access & Visibility Tests', () => {
                 organizationId: mockOrgId,
                 $or: [
                     { project: { $in: [mockProjId] } },
-                    { project: null }
+                    { project: null },
+                    { assignee: mockUser1Id },
+                    { createdBy: mockUser1Id },
+                    { watchers: mockUser1Id }
                 ]
             }));
         });
@@ -127,7 +130,61 @@ describe('TaskService Access & Visibility Tests', () => {
             expect(result).toEqual(mockTask);
         });
 
-        it('should deny access if user is not a project member', async () => {
+        it('should allow assignees access to the task even if not a project member', async () => {
+            const mockTask = {
+                _id: 'task1',
+                assignee: mockUser1Id,
+                project: {
+                    _id: mockProjId,
+                    owner: mockUser2Id,
+                    members: []
+                }
+            };
+
+            const mockQuery = makeChainableMock(mockTask);
+            findOneSpy.mockReturnValue(mockQuery);
+
+            const result = await taskService.getTaskById('task1', mockOrgId, mockUser1Id, 'user');
+            expect(result).toEqual(mockTask);
+        });
+
+        it('should allow creators access to the task even if not a project member', async () => {
+            const mockTask = {
+                _id: 'task1',
+                createdBy: mockUser1Id,
+                project: {
+                    _id: mockProjId,
+                    owner: mockUser2Id,
+                    members: []
+                }
+            };
+
+            const mockQuery = makeChainableMock(mockTask);
+            findOneSpy.mockReturnValue(mockQuery);
+
+            const result = await taskService.getTaskById('task1', mockOrgId, mockUser1Id, 'user');
+            expect(result).toEqual(mockTask);
+        });
+
+        it('should allow watchers access to the task even if not a project member', async () => {
+            const mockTask = {
+                _id: 'task1',
+                watchers: [mockUser1Id],
+                project: {
+                    _id: mockProjId,
+                    owner: mockUser2Id,
+                    members: []
+                }
+            };
+
+            const mockQuery = makeChainableMock(mockTask);
+            findOneSpy.mockReturnValue(mockQuery);
+
+            const result = await taskService.getTaskById('task1', mockOrgId, mockUser1Id, 'user');
+            expect(result).toEqual(mockTask);
+        });
+
+        it('should deny access if user is not a project member, assignee, creator, or watcher', async () => {
             const mockTask = {
                 _id: 'task1',
                 project: {
