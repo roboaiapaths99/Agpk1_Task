@@ -34,43 +34,79 @@ import {
     Briefcase,
     Camera
 } from 'lucide-react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import { cn } from '../lib/utils';
 import useUIStore from '../store/useUI';
 import useAuthStore from '../store/useAuth';
 import useSocket from '../hooks/useSocket';
+import { ChevronDown, Folder } from 'lucide-react';
 
-const navItems = [
-    { icon: Layers, label: 'Module Hub', path: '/' },
-    { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard', tourId: 'dashboard' },
-    { icon: CheckSquare, label: 'Kanban', path: '/tasks', tourId: 'tasks' },
-    { icon: Table2, label: 'Table', path: '/table' },
-    { icon: Layers, label: 'Backlog', path: '/backlog' },
-    { icon: Zap, label: 'Sprints', path: '/sprints' },
-    { icon: Layers, label: 'Projects', path: '/projects', tourId: 'projects' },
-    { icon: BarChart3, label: 'Reports', path: '/reports', tourId: 'reports' },
-    { icon: Users, label: 'Team Capacity', path: '/resources' },
-    { icon: MessageSquare, label: 'Messenger', path: '/messaging' },
-    { icon: Target, label: 'OKRs', path: '/okrs' },
-    { icon: DollarSign, label: 'Finance Hub', path: '/finance', tourId: 'finance' },
-    { icon: PieChart, label: 'Budgets', path: '/finance/budgets' },
-    { icon: UserCheck, label: 'Payroll', path: '/finance/payroll' },
-    { icon: Workflow, label: 'Workflows', path: '/workflows' },
-    { icon: Activity, label: 'Team Pulse', path: '/team-pulse' },
-    { icon: GitBranch, label: 'Work Graph', path: '/work-graph' },
-    { icon: Zap, label: 'AI Insights', path: '/insights' },
-    { icon: BookOpen, label: 'Docs', path: '/docs' },
-    { icon: Package, label: 'Inventory', externalUrl: 'https://inventory.agpkacademy.in/login' },
-    { icon: Briefcase, label: 'CRM', externalUrl: 'https://crm.agpkacademy.in' },
-    { icon: Camera, label: 'Attendance Pulse', externalUrl: 'https://attendence-inofice-admin-desk.vercel.app/' },
-    { icon: Users, label: 'HRMS Portal', externalUrl: 'https://hrms.agpkacademy.in/' },
-    { icon: Bell, label: 'Notifications', path: '/notifications' },
-    { icon: Building2, label: 'Organization', path: '/organization', adminOnly: true },
-    { icon: GitMerge, label: 'Integrations', path: '/integrations', adminOnly: true },
-    { icon: Activity, label: 'Activity Feed', path: '/audit', adminOnly: true },
-    { icon: Shield, label: 'Roles & Permissions', path: '/rbac', adminOnly: true },
-    { icon: ShieldCheck, label: 'SLA Policies', path: '/sla', adminOnly: true },
-    { icon: Download, label: 'Export Center', path: '/export', adminOnly: true },
+const navGroups = [
+    {
+        id: 'core',
+        title: 'Core Platform',
+        items: [
+            { icon: Layers, label: 'Module Hub', path: '/' },
+            { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard', tourId: 'dashboard' },
+            { icon: MessageSquare, label: 'Messenger', path: '/messaging' },
+            { icon: Activity, label: 'Team Pulse', path: '/team-pulse' },
+            { icon: Zap, label: 'AI Insights', path: '/insights' },
+            { icon: BookOpen, label: 'Docs', path: '/docs' },
+            { icon: Bell, label: 'Notifications', path: '/notifications' },
+        ]
+    },
+    {
+        id: 'tasks',
+        title: 'Tasks & Ops',
+        collapsible: true,
+        items: [
+            { icon: CheckSquare, label: 'Kanban', path: '/tasks', tourId: 'tasks' },
+            { icon: Table2, label: 'Table', path: '/table' },
+            { icon: Layers, label: 'Backlog', path: '/backlog' },
+            { icon: Zap, label: 'Sprints', path: '/sprints' },
+            { icon: Layers, label: 'Projects', path: '/projects', tourId: 'projects' },
+            { icon: Users, label: 'Team Capacity', path: '/resources' },
+            { icon: Workflow, label: 'Workflows', path: '/workflows' },
+            { icon: GitBranch, label: 'Work Graph', path: '/work-graph' },
+            { icon: BarChart3, label: 'Reports', path: '/reports', tourId: 'reports' },
+        ]
+    },
+    {
+        id: 'finance',
+        title: 'Finance & Goals',
+        collapsible: true,
+        items: [
+            { icon: DollarSign, label: 'Finance Hub', path: '/finance', tourId: 'finance' },
+            { icon: PieChart, label: 'Budgets', path: '/finance/budgets' },
+            { icon: UserCheck, label: 'Payroll', path: '/finance/payroll' },
+            { icon: Target, label: 'OKRs', path: '/okrs' },
+        ]
+    },
+    {
+        id: 'submodules',
+        title: 'Submodules',
+        collapsible: true,
+        items: [
+            { icon: Package, label: 'Inventory', externalUrl: 'https://inventory.agpkacademy.in/login' },
+            { icon: Briefcase, label: 'CRM', externalUrl: 'https://crm.agpkacademy.in' },
+            { icon: Camera, label: 'Attendance Pulse', externalUrl: 'https://attendence-inofice-admin-desk.vercel.app/' },
+            { icon: Users, label: 'HRMS Portal', externalUrl: 'https://hrms.agpkacademy.in/' },
+        ]
+    },
+    {
+        id: 'admin',
+        title: 'Administration',
+        collapsible: true,
+        adminOnly: true,
+        items: [
+            { icon: Building2, label: 'Organization', path: '/organization' },
+            { icon: GitMerge, label: 'Integrations', path: '/integrations' },
+            { icon: Activity, label: 'Activity Feed', path: '/audit' },
+            { icon: Shield, label: 'Roles & Permissions', path: '/rbac' },
+            { icon: ShieldCheck, label: 'SLA Policies', path: '/sla' },
+            { icon: Download, label: 'Export Center', path: '/export' },
+        ]
+    }
 ];
 
 // Who's Online Indicator
@@ -126,6 +162,60 @@ const OnlineIndicator = ({ isOpen }) => {
 export const Sidebar = () => {
     const { isSidebarOpen, toggleSidebar, theme, toggleTheme } = useUIStore();
     const { user, organization, logout } = useAuthStore();
+    const location = useLocation();
+
+    const [openGroups, setOpenGroups] = useState({
+        tasks: false,
+        finance: false,
+        submodules: false,
+        admin: false
+    });
+
+    const toggleGroup = (groupId) => {
+        if (!isSidebarOpen) {
+            toggleSidebar();
+        }
+        setOpenGroups(prev => ({ ...prev, [groupId]: !prev[groupId] }));
+    };
+
+    const groupIcons = {
+        tasks: CheckSquare,
+        finance: DollarSign,
+        submodules: Layers,
+        admin: Shield
+    };
+
+    const renderItem = (item) => {
+        if (item.externalUrl) {
+            return (
+                <a
+                    key={item.label}
+                    href={item.externalUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center px-3 py-2 rounded-lg transition-colors group hover:bg-slate-800 hover:text-white text-slate-300 text-xs font-semibold"
+                >
+                    <item.icon className="w-4 h-4 flex-shrink-0" />
+                    {isSidebarOpen && <span className="ml-3 truncate">{item.label}</span>}
+                </a>
+            );
+        }
+        return (
+            <NavLink
+                key={item.path + item.label}
+                to={item.path}
+                end={item.path === '/'}
+                data-tour={item.tourId || undefined}
+                className={({ isActive }) => cn(
+                    "flex items-center px-3 py-2 rounded-lg transition-colors group text-xs font-semibold",
+                    isActive ? "bg-primary text-white" : "hover:bg-slate-800 hover:text-white"
+                )}
+            >
+                <item.icon className="w-4 h-4 flex-shrink-0" />
+                {isSidebarOpen && <span className="ml-3 truncate">{item.label}</span>}
+            </NavLink>
+        );
+    };
 
     return (
         <div className={cn(
@@ -146,66 +236,83 @@ export const Sidebar = () => {
             </div>
 
             {/* Nav */}
-            <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto custom-scrollbar">
-                {navItems
-                    .filter(item => !item.adminOnly || user?.role === 'admin')
-                    .map((item) => {
-                        if (item.externalUrl) {
+            <nav className="flex-1 py-4 px-3 space-y-4 overflow-y-auto custom-scrollbar">
+                {navGroups
+                    .filter(group => !group.adminOnly || user?.role === 'admin')
+                    .map((group) => {
+                        const isGroupActive = group.items.some(item => item.path === location.pathname);
+
+                        if (group.collapsible) {
+                            const Icon = groupIcons[group.id] || Folder;
+                            const isOpen = openGroups[group.id] || (isGroupActive && isSidebarOpen);
+
                             return (
-                                <a
-                                    key={item.label}
-                                    href={item.externalUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="flex items-center px-3 py-2.5 rounded-lg transition-colors group hover:bg-slate-800 hover:text-white text-slate-300"
-                                >
-                                    <item.icon className="w-5 h-5 flex-shrink-0" />
-                                    {isSidebarOpen && <span className="ml-3 font-medium">{item.label}</span>}
-                                </a>
+                                <div key={group.id} className="space-y-1">
+                                    <button
+                                        onClick={() => toggleGroup(group.id)}
+                                        className={cn(
+                                            "w-full flex items-center justify-between px-3 py-2 rounded-lg transition-all text-left group/btn",
+                                            isGroupActive ? "text-primary font-bold" : "text-slate-400 hover:text-white hover:bg-slate-850"
+                                        )}
+                                    >
+                                        <div className="flex items-center min-w-0">
+                                            <Icon className={cn("w-4 h-4 flex-shrink-0", isGroupActive ? "text-primary" : "text-slate-500 group-hover/btn:text-slate-300")} />
+                                            {isSidebarOpen && (
+                                                <span className="ml-3 text-[10px] font-black uppercase tracking-wider truncate">
+                                                    {group.title}
+                                                </span>
+                                            )}
+                                        </div>
+                                        {isSidebarOpen && (
+                                            <ChevronDown className={cn("w-3.5 h-3.5 transition-transform duration-200", isOpen ? "rotate-180" : "")} />
+                                        )}
+                                    </button>
+                                    {isOpen && isSidebarOpen && (
+                                        <div className="pl-3 mt-1 space-y-1 border-l border-slate-800 ml-4.5">
+                                            {group.items.map(renderItem)}
+                                        </div>
+                                    )}
+                                </div>
                             );
                         }
+
                         return (
-                            <NavLink
-                                key={item.path + item.label}
-                                to={item.path}
-                                end={item.path === '/'}
-                                data-tour={item.tourId || undefined}
-                                className={({ isActive }) => cn(
-                                    "flex items-center px-3 py-2.5 rounded-lg transition-colors group",
-                                    isActive ? "bg-primary text-white" : "hover:bg-slate-800 hover:text-white"
+                            <div key={group.id} className="space-y-1">
+                                {isSidebarOpen && (
+                                    <span className="px-3 text-[10px] font-black text-slate-500 uppercase tracking-widest block mb-1">
+                                        {group.title}
+                                    </span>
                                 )}
-                            >
-                                <item.icon className="w-5 h-5 flex-shrink-0" />
-                                {isSidebarOpen && <span className="ml-3 font-medium">{item.label}</span>}
-                            </NavLink>
+                                {group.items.map(renderItem)}
+                            </div>
                         );
                     })}
             </nav>
 
             {/* Footer */}
             <div className="p-3 border-t border-slate-800 space-y-1">
-                <button onClick={toggleTheme} className="w-full flex items-center px-3 py-2.5 rounded-lg hover:bg-slate-800 transition-colors">
-                    {theme === 'light' ? <Moon className="w-5 h-5 flex-shrink-0" /> : <Sun className="w-5 h-5 flex-shrink-0" />}
+                <button onClick={toggleTheme} className="w-full flex items-center px-3 py-2 rounded-lg hover:bg-slate-800 transition-colors text-xs font-semibold">
+                    {theme === 'light' ? <Moon className="w-4 h-4 flex-shrink-0" /> : <Sun className="w-4 h-4 flex-shrink-0" />}
                     {isSidebarOpen && <span className="ml-3 font-medium">{theme === 'light' ? 'Dark Mode' : 'Light Mode'}</span>}
                 </button>
                 <NavLink
                     to="/settings"
                     data-tour="settings"
                     className={({ isActive }) => cn(
-                        "w-full flex items-center px-3 py-2.5 rounded-lg transition-colors",
+                        "w-full flex items-center px-3 py-2 rounded-lg transition-colors text-xs font-semibold",
                         isActive ? "bg-primary text-white" : "hover:bg-slate-800"
                     )}
                 >
-                    <Settings className="w-5 h-5 flex-shrink-0" />
+                    <Settings className="w-4 h-4 flex-shrink-0" />
                     {isSidebarOpen && <span className="ml-3 font-medium">Settings</span>}
                 </NavLink>
-                <button onClick={logout} className="w-full flex items-center px-3 py-2.5 rounded-lg hover:bg-red-500/10 hover:text-red-400 transition-colors">
-                    <LogOut className="w-5 h-5 flex-shrink-0" />
+                <button onClick={logout} className="w-full flex items-center px-3 py-2 rounded-lg hover:bg-red-500/10 hover:text-red-400 transition-colors text-xs font-semibold">
+                    <LogOut className="w-4 h-4 flex-shrink-0" />
                     {isSidebarOpen && <span className="ml-3 font-medium">Logout</span>}
                 </button>
 
                 <button onClick={toggleSidebar} className="mt-4 w-full flex items-center justify-center p-2 rounded-lg hover:bg-slate-800 transition-all">
-                    {isSidebarOpen ? <ChevronLeft className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
+                    {isSidebarOpen ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                 </button>
             </div>
         </div>
