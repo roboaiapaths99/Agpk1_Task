@@ -171,6 +171,18 @@ export const Sidebar = () => {
         admin: false
     });
 
+    useEffect(() => {
+        const currentPath = location.pathname;
+        navGroups.forEach(group => {
+            if (group.collapsible) {
+                const isActive = group.items.some(item => item.path === currentPath);
+                if (isActive) {
+                    setOpenGroups(prev => ({ ...prev, [group.id]: true }));
+                }
+            }
+        });
+    }, [location.pathname]);
+
     const toggleGroup = (groupId) => {
         if (!isSidebarOpen) {
             toggleSidebar();
@@ -244,7 +256,7 @@ export const Sidebar = () => {
 
                         if (group.collapsible) {
                             const Icon = groupIcons[group.id] || Folder;
-                            const isOpen = openGroups[group.id] || (isGroupActive && isSidebarOpen);
+                            const isOpen = openGroups[group.id] && isSidebarOpen;
 
                             return (
                                 <div key={group.id} className="space-y-1">
